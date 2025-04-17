@@ -1,0 +1,34 @@
+{
+  "name": "MediathekArr ",
+  "slug": "mediathekarr",
+  "categories": [
+    14
+  ],
+  "date_created": "2025-04-17",
+  "type": "ct",
+  "updateable": true,
+  "privileged": false,
+  "interface_port": 5007,
+  "documentation": null,
+  "website": "https://github.com/PCJones/MediathekArr",
+  "logo": null,
+  "description": "Integrate ARD&ZDF Mediathek in Prowlarr, Sonarr and Radarr",
+  "install_methods": [
+    {
+      "type": "default",
+      "script": "ct/mediathekarr.sh",
+      "resources": {
+        "cpu": 2,
+        "ram": 2048,
+        "hdd": 8,
+        "os": "Debian",
+        "version": "12"
+      }
+    }
+  ],
+  "default_credentials": {
+    "username": "root",
+    "password": null
+  },
+  "notes": []
+}
