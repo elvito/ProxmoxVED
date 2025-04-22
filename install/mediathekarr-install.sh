@@ -21,17 +21,21 @@ $STD apt-get install -y \
   dotnet-sdk-9.0 \
   mkvtoolnix
   msg_ok "Installed Dependencies"
-  
-msg_info "Installing Mediathekarr"
+
+msg_info "Installing MediathekArr"
 temp_file=$(mktemp)
 #RELEASE=$(curl -s https://github.com/PCJones/MediathekArr/releases/latest | grep "tag_name" | awk '{print substr($2, 2, length($2)-3)}')
-#curl -fsSL "https://github.com/PCJones/MediathekArr/releases/download/${RELEASE}/linux-x64.zip" -o $temp_file
-unzip -qj $temp_file '*/**' -d /opt/Mediathekarr
+#curl -fsSL "https://github.com/PCJones/MediathekArr/archive/refs/tags/${RELEASE}.zip" -o $temp_file
+unzip -qj $temp_file '*/**' -d /opt/MediathekArr
 echo "${RELEASE}" >"/opt/Mediathekarr_version.txt"
+cd /opt/MediathekArr
+dotnet restore
+dotnet build
+cp .env.example .env
 msg_ok "Installation completed"
 
 msg_info "Creating appsettings.json"
-cat <<EOF >/opt/Mediathekarr/appsettings.json
+cat <<EOF >/opt/MediathekArr/appsettings.json
 {
   "Kestrel": {
     "Endpoints": {
@@ -75,7 +79,7 @@ cat <<EOF >/opt/Mediathekarr/appsettings.json
 EOF
 msg_ok "appsettings.json created"
 
-msg_info "Creating systemd Services"   
+msg_info "Creating systemd Services"
 cat <<EOF >/etc/systemd/system/mediathekarrserver.service
 [Unit]
 Description=MediathekArr Server Service
