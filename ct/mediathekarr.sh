@@ -34,8 +34,11 @@ function update_script() {
     systemctl stop mediathekarrserver
     systemctl stop mediathekarr
     temp_file=$(mktemp)
-    #curl -fsSL "https://github.com/PCJones/MediathekArr/releases/download/${RELEASE}/linux-x64.zip" -o $temp_file
-    $STD unzip -u $temp_file '*/**' -d /opt/UmlautAdaptarr
+    #curl -fsSL "https://github.com/PCJones/MediathekArr/archive/refs/tags/${RELEASE}.zip" -o $temp_file
+    $STD unzip -u $temp_file '*/**' -d /opt/MediathekArr
+    cd /opt/MediathekArr
+    dotnet restore
+    dotnet build
     systemctl start mediathekarrserver
     systemctl start mediathekarr
     msg_ok "$APP has been updated."
