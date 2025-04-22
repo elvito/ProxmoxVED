@@ -24,14 +24,24 @@ $STD apt-get install -y \
 
 msg_info "Installing MediathekArr"
 temp_file=$(mktemp)
-RELEASE=$(curl -s https://api.github.com/repos/PCJones/MediathekArr/releases/latest | grep "tag_name" | awk '{print substr($2, 2, length($2)-3)}')
-curl -fsSL "https://github.com/PCJones/MediathekArr/archive/refs/tags/${RELEASE}.zip" -o $temp_file
+raw_tag=$(curl -s https://api.github.com/repos/PCJones/MediathekArr/releases/latest \
+  | grep '"tag_name":' \
+  | sed -E 's/.*"([^"]+)".*/\1/')
+RELEASE=$(echo "$raw_tag" | sed -E 's/^v//')
+if [[ "$raw_tag" == v* ]]; then
+  download_tag="v$RELEASE"
+else
+  download_tag="$RELEASE"
+fi
+curl -fsSL "https://github.com/PCJones/MediathekArr/archive/refs/tags/${download_tag}.zip" -o "$temp_file"
 unzip -qu $temp_file '*/**' -d /opt/MediathekArr
-echo "${RELEASE}" >"/opt/Mediathekarr_version.txt"
-cd /opt/MediathekArr
+echo "${RELEASE}" >"/opt/MediathekArr/Mediathekarr_version.txt"
+cd /opt/MediathekArr/MediathekArr-${RELEASE}
 dotnet restore
 dotnet build
 cp .env.example .env
+mv /opt/MediathekArr/MediathekArr-${RELEASE}/* /opt/MediathekArr
+rm -dr /opt/MediathekArr/MediathekArr-${RELEASE}/
 msg_ok "Installation completed"
 
 msg_info "Creating appsettings.json"
