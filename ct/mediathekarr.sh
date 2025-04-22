@@ -34,7 +34,7 @@ function update_script() {
     systemctl stop mediathekarrserver
     systemctl stop mediathekarr
     temp_file=$(mktemp)
-    #curl -fsSL "https://github.com/PCJones/MediathekArr/archive/refs/tags/${RELEASE}.zip" -o $temp_file
+    curl -fsSL "https://github.com/PCJones/MediathekArr/archive/refs/tags/${RELEASE}.zip" -o $temp_file
     $STD unzip -u $temp_file '*/**' -d /opt/MediathekArr
     cd /opt/MediathekArr
     dotnet restore
