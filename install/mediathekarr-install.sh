@@ -26,7 +26,7 @@ msg_info "Installing MediathekArr"
 temp_file=$(mktemp)
 RELEASE=$(curl -s https://api.github.com/repos/PCJones/MediathekArr/releases/latest | grep "tag_name" | awk '{print substr($2, 2, length($2)-3)}')
 curl -fsSL "https://github.com/PCJones/MediathekArr/archive/refs/tags/${RELEASE}.zip" -o $temp_file
-unzip -qj $temp_file '*/**' -d /opt/MediathekArr
+unzip -qju $temp_file '*/**' -d /opt/MediathekArr
 echo "${RELEASE}" >"/opt/Mediathekarr_version.txt"
 cd /opt/MediathekArr
 dotnet restore
