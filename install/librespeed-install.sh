@@ -21,37 +21,28 @@ msg_ok "Installed Dependencies"
 
 msg_info "Installing librespeed"
 temp_file=$(mktemp)
-RELEASE=$(curl -fsSL https://api.github.com/repos/librespeed/speedtest-go/releases/latest | grep "tag_name" | awk '{print substr($2, 3, length($2)-4)}')
-curl -fsSL "https://github.com/librespeed/speedtest-go/releases/download/v${RELEASE}/speedtest-go_${RELEASE}_linux_386.tar.gz" -o $temp_file
-mkdir -p /opt/librespeed/assets
-tar -xvzf $temp_file -C /opt/librespeed
-chmod +x /opt/librespeed/speedtest-backend
+RELEASE=$(curl -fsSL https://api.github.com/repos/librespeed/speedtest/releases/latest | grep "tag_name" | awk '{print substr($2, 2, length($2)-3)}')
+curl -fsSL "https://github.com/librespeed/speedtest/archive/refs/tags/${RELEASE}.zip" -o $temp_file
+mkdir -p /opt/librespeed
+mkdir -p /temp
+unzip -u $temp_file -C /temp
+cd /temp/speedtest-${RELEASE}
+cp -u favicon.ico index.html speedtest.js speedtest_worker.js /opt/librespeed/
+cp -ru backend results /opt/librespeed/
 echo "${RELEASE}" >"/opt/librespeed/librespeed_version.txt"
-go mod init librespeed
-go get github.com/boltdb/bolt
-chown -R 1000:1000 /opt/librespeed
-chmod -R 755 /opt/librespeed
+rm -rf /temp
 msg_ok "Installation completed"
 
-msg_info "Creating systemd Service"
-cat <<EOF >/etc/systemd/system/librespeed-backend.service
-[Unit]
-Description=Librespeed Backend Service
-After=network.target
-
-[Service]
-WorkingDirectory=/opt/librespeed
-ExecStart=/opt/librespeed/
-Restart=always
-User=root
-Group=root
-### Environment=
-
-[Install]
-WantedBy=multi-user.target
+msg_info "Creating Caddyfile"
+cat <<EOF >/etc/caddy/Caddyfile
+:80 {
+        root * /opt/librespeed
+        file_server
+        php_fastcgi unix//run/php/php-fpm.sock
+}
 EOF
-systemctl -q --now enable librespeed
-msg_ok "Created systemd Service"
+systemctl restart caddy
+msg_ok "Caddyfile created"
 
 motd_ssh
 customize
