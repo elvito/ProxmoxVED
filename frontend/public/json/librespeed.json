@@ -13,7 +13,7 @@
     "config_path": "",
     "website": null,
     "logo": "https://github.com/librespeed/speedtest/blob/master/.logo/icon_huge.png",
-    "description": "This LXC container hosts a self-hosted instance of LibreSpeed, a lightweight and privacy-friendly internet speed test tool. The container uses Caddy & PHP as a web server. Ideal for quick, private speed tests without third-party dependencies.",
+    "description": "No Flash, No Java, No Websocket, No Bullshit. This is a very lightweight speed test implemented in Javascript, using XMLHttpRequest and Web Workers.",
     "install_methods": [
         {
             "type": "default",
