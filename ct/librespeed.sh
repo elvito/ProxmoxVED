@@ -3,7 +3,7 @@ source <(curl -fsSL https://raw.githubusercontent.com/elvito/ProxmoxVED/refs/hea
 # Copyright (c) 2021-2025 community-scripts ORG
 # Author: elvito
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://github.com/librespeed/speedtest-go
+# Source: https://github.com/librespeed/speedtest
 
 APP="librespeed"
 var_tags="speedtest"
