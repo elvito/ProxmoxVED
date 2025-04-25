@@ -14,12 +14,8 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD curl -fsSL https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -o packages-microsoft-prod.deb
-$STD dpkg -i packages-microsoft-prod.deb
-$STD apt-get update
 $STD apt-get install -y \
-  dotnet-sdk-8.0 \
-  aspnetcore-runtime-8.0
+  golang
   msg_ok "Installed Dependencies"
 
 msg_info "Installing Umlautadaptarr"
