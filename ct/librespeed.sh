@@ -33,7 +33,7 @@ function update_script() {
     msg_info "Updating $APP..."
     systemctl stop librespeed
     temp_file=$(mktemp)
-    curl -fsSL "https://github.com/librespeed/speedtest-go/releases/download/v${RELEASE}/speedtest-go_${RELEASE}_darwin_amd64.tar.gz" -o $temp_file
+    curl -fsSL "https://github.com/librespeed/speedtest-go/releases/download/v${RELEASE}/speedtest-go_${RELEASE}_linux_386.tar.gz" -o $temp_file
     ###$STD unzip -u $temp_file '*/**' -d /opt/librespeed
     systemctl start librespeed
     msg_ok "$APP has been updated."
