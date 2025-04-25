@@ -24,18 +24,22 @@ function update_script() {
     check_container_storage
     check_container_resources
 
-    if [[ ! -f /opt/librespeed/appsettings.json ]]; then
+    if [[ ! -f /opt/librespeed/settings.toml ]]; then
         msg_error "No ${APP} Installation Found!"
         exit
     fi
-    RELEASE=$(curl -fsSL https://api.github.com/repos/librespeed/speedtest-go/releases/latest | grep "tag_name" | awk '{print substr($2, 3, length($2)-4)}')
+    RELEASE=$(curl -fsSL https://api.github.com/repos/librespeed/speedtest/releases/latest | grep "tag_name" | awk '{print substr($2, 2, length($2)-3)}')
     if [[ ! -f /opt/librespeed/${APP}_version.txt ]] || [[ "${RELEASE}" != "$(cat /opt//librespeed/${APP}_version.txt)" ]]; then
     msg_info "Updating $APP..."
-    systemctl stop librespeed
     temp_file=$(mktemp)
-    curl -fsSL "https://github.com/librespeed/speedtest-go/releases/download/v${RELEASE}/speedtest-go_${RELEASE}_linux_386.tar.gz" -o $temp_file
-    ###$STD unzip -u $temp_file '*/**' -d /opt/librespeed
-    systemctl start librespeed
+    curl -fsSL "https://github.com/librespeed/speedtest/archive/refs/tags/${RELEASE}.zip" -o $temp_file
+    mkdir -p /temp
+    unzip -u $temp_file -C /temp
+    cd /temp/speedtest-${RELEASE}
+    cp -u favicon.ico index.html speedtest.js speedtest_worker.js /opt/librespeed/
+    cp -ru backend results /opt/librespeed/
+    echo "${RELEASE}" >"/opt/librespeed/librespeed_version.txt"
+    systemctl restart caddy
     msg_ok "$APP has been updated."
     else
     msg_ok "No update required. ${APP} is already at ${RELEASE}"
