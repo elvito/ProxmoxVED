@@ -37,7 +37,7 @@ EOF
 msg_ok "appsettings.json created"
 
 msg_info "Creating systemd Service"
-cat <<EOF >/etc/systemd/system/umlautadaptarrlibrespeed.service
+cat <<EOF >/etc/systemd/system/librespeed.service
 [Unit]
 Description=UmlautAdaptarr Service
 After=network.target
