@@ -26,7 +26,7 @@ RELEASE=$(curl -fsSL https://api.github.com/repos/librespeed/speedtest/releases/
 curl -fsSL "https://github.com/librespeed/speedtest/archive/refs/tags/${RELEASE}.zip" -o $temp_file
 mkdir -p /opt/librespeed
 mkdir -p /temp
-unzip -u $temp_file -C /temp
+unzip -u $temp_file -d /temp
 cd /temp/speedtest-${RELEASE}
 cp -u favicon.ico index.html speedtest.js speedtest_worker.js /opt/librespeed/
 cp -ru backend results /opt/librespeed/
