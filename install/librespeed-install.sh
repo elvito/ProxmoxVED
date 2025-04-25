@@ -27,19 +27,17 @@ temp_file=$(mktemp)
 RELEASE=$(curl -fsSL https://api.github.com/repos/librespeed/speedtest-go/releases/latest | grep "tag_name" | awk '{print substr($2, 3, length($2)-4)}')
 curl -fsSL "https://github.com/librespeed/speedtest-go/releases/download/v${RELEASE}/speedtest-go_${RELEASE}_darwin_amd64.tar.gz" -o $temp_file
 ###unzip -qj $temp_file '*/**' -d /opt/UmlautAdaptarr
-echo "${RELEASE}" >"/opt/UmlautAdaptarr_version.txt"
+echo "${RELEASE}" >"/opt//librespeed/librespeed_version.txt"
 msg_ok "Installation completed"
 
-msg_info "Creating appsettings.json"
-cat <<EOF >/opt/librespeed/appsettings.json
-
-EOF
-msg_ok "appsettings.json created"
+msg_info "Downloading settings.toml"
+curl -fsSL https://raw.githubusercontent.com/librespeed/speedtest-go/master/settings.toml -o /opt/librespeed/settings.toml
+msg_ok "settings.toml downloaded"
 
 msg_info "Creating systemd Service"
 cat <<EOF >/etc/systemd/system/librespeed.service
 [Unit]
-Description=UmlautAdaptarr Service
+Description=librespeed Service
 After=network.target
 
 [Service]
