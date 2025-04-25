@@ -21,7 +21,7 @@ $STD apt-get install -y \
 msg_info "Installing Umlautadaptarr"
 temp_file=$(mktemp)
 RELEASE=$(curl -fsSL https://api.github.com/repos/librespeed/speedtest-go/releases/latest | grep "tag_name" | awk '{print substr($2, 3, length($2)-4)}')
-curl -fsSL "https://github.com/librespeed/speedtest-go/releases/download/v${RELEASE}/speedtest-go_${RELEASE}_darwin_amd64.tar.gz" -o $temp_file
+curl -fsSL "https://github.com/librespeed/speedtest-go/releases/download/v${RELEASE}/speedtest-go_${RELEASE}_linux_386.tar.gz" -o $temp_file
 mkdir -p /opt/librespeed
 tar -xvzf $temp_file -C /opt/librespeed
 chmod +x /opt/librespeed/speedtest-backend
