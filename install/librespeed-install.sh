@@ -23,13 +23,9 @@ temp_file=$(mktemp)
 RELEASE=$(curl -fsSL https://api.github.com/repos/librespeed/speedtest-go/releases/latest | grep "tag_name" | awk '{print substr($2, 3, length($2)-4)}')
 curl -fsSL "https://github.com/librespeed/speedtest-go/releases/download/v${RELEASE}/speedtest-go_${RELEASE}_darwin_amd64.tar.gz" -o $temp_file
 mkdir -p /opt/librespeed
-tar -xvfz $temp_file -C /opt/librespeed
+tar -xvzf $temp_file -C /opt/librespeed
 echo "${RELEASE}" >"/opt//librespeed/librespeed_version.txt"
 msg_ok "Installation completed"
-
-msg_info "Downloading settings.toml"
-curl -fsSL https://raw.githubusercontent.com/librespeed/speedtest-go/master/settings.toml -o /opt/librespeed/settings.toml
-msg_ok "settings.toml downloaded"
 
 msg_info "Creating systemd Service"
 cat <<EOF >/etc/systemd/system/librespeed.service
