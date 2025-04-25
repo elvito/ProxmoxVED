@@ -30,7 +30,6 @@ cd /temp/speedtest-${RELEASE}
 cp -u favicon.ico index.html speedtest.js speedtest_worker.js /opt/librespeed/
 cp -ru backend results /opt/librespeed/
 echo "${RELEASE}" >"/opt/librespeed/librespeed_version.txt"
-rm -rf /temp
 msg_ok "Installation completed"
 
 msg_info "Creating Caddyfile"
@@ -48,6 +47,7 @@ motd_ssh
 customize
 
 msg_info "Cleaning up"
+rm -rf /temp
 rm -f $temp_file
 $STD apt-get -y autoremove
 $STD apt-get -y autoclean
