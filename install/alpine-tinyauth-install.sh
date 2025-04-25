@@ -14,7 +14,7 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apk add \
+$STD apk add --no-cache \
   npm \
   curl \
   go
@@ -24,35 +24,54 @@ msg_info "Installing tinyauth"
 temp_file=$(mktemp)
 $STD npm install -g bun
 mkdir -p /opt/tinyauth
-RELEASE=$(curl -s https://api.github.com/repos/steveiliop56/tinyauth/releases/latest | grep "tag_name" | awk '{print substr($2, 2, length($2)-3) }')
-curl -fsSL https://github.com/steveiliop56/tinyauth/archive/refs/tags/v3.1.0.tar.gz -o $temp_file
-tar -xzf $temp_file -C /opt/tinyauth --strip-components=1
-cd /opt/tinyauth/site
+RELEASE=$(curl -s https://api.github.com/repos/steveiliop56/tinyauth/releases/latest | grep "tag_name" | awk '{print substr($2, 3, length($2)-4) }')
+curl -fsSL "https://github.com/steveiliop56/tinyauth/archive/refs/tags/v${RELEASE}.tar.gz" -o "$temp_file"
+tar -xzf "$temp_file" -C /opt/tinyauth --strip-components=1
+cd /opt/tinyauth/frontend
 $STD bun install
 $STD bun run build
 mv dist /opt/tinyauth/internal/assets/
 cd /opt/tinyauth
 $STD go mod download
 CGO_ENABLED=0 go build -ldflags "-s -w"
-SECRET=$(head -c 32 /dev/urandom | xxd -p -c 32)
+{
+  echo "tinyauth Credentials"
+  echo "Username: admin@example.com"
+  echo "Password: admin"
+} >>~/tinyauth.creds
+echo "${RELEASE}" >/opt/tinyauth_version.txt
 msg_ok "Installed tinyauth"
 
 msg_info "Enabling tinyauth Service"
-service_path="/etc/init.d/tinyauth"
+SECRET=$(head -c 16 /dev/urandom | xxd -p -c 16 | tr -d '\n')
+{
+  echo "SECRET=${SECRET}"
+  echo "USERS=admin@example.com:\$2a\$10\$CrTK.W7WXSClo3ZY1yJUFupg5UdV8WNcynEhZhJFNjhGQB.Ga0ZDm"
+  echo "APP_URL=http://localhost:3000"
+} >>/opt/tinyauth/.env
 
-echo '#!/sbin/openrc-run
+cat <<EOF >/etc/init.d/tinyauth
+#!/sbin/openrc-run
 description="tinyauth Service"
 
 command="/opt/tinyauth/tinyauth"
-command_args="--secret=$SECRET --users=admin@example.com:$apr1$n61ztxfk$0f/uGQFxnB.FBa5cxgqNg."
+directory="/opt/tinyauth"
 command_user="root"
+command_background="true"
 pidfile="/var/run/tinyauth.pid"
+
+start_pre() {
+    if [ -f "/opt/tinyauth/.env" ]; then
+        export \$(grep -v '^#' /opt/tinyauth/.env | xargs)
+    fi
+}
 
 depend() {
     use net
-}' >$service_path
+}
+EOF
 
-chmod +x $service_path
+chmod +x /etc/init.d/tinyauth
 $STD rc-update add tinyauth default
 msg_ok "Enabled tinyauth Service"
 
