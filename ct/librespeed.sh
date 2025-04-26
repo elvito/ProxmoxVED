@@ -24,7 +24,7 @@ function update_script() {
     check_container_storage
     check_container_resources
 
-    if [[ ! -f /opt/librespeed/settings.toml ]]; then
+    if [[ ! -f /opt/librespeed/index.html ]]; then
         msg_error "No ${APP} Installation Found!"
         exit
     fi
