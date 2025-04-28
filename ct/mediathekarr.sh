@@ -38,6 +38,7 @@ function update_script() {
     $STD unzip -u $temp_file '*/**' -d /opt/UmlautAdaptarr
     systemctl start mediathekarrserver
     systemctl start mediathekarr
+    echo "${RELEASE}" >"/opt/MediathekArr/${APP}_version.txt"
     msg_ok "$APP has been updated."
     else
     msg_ok "No update required. ${APP} is already at ${RELEASE}"
