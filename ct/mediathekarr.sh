@@ -5,7 +5,7 @@ source <(curl -fsSL https://raw.githubusercontent.com/elvito/ProxmoxVED/refs/hea
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/PCJones/MediathekArr
 
-APP="Mediathekarr"
+APP="MediathekArr"
 var_tags="arr"
 var_cpu="1"
 var_ram="512"
@@ -24,7 +24,7 @@ function update_script() {
     check_container_storage
     check_container_resources
 
-    if [[ ! -f /opt/Mediathekarr/appsettings.json ]]; then
+    if [[ ! -f /opt/MediathekArr/appsettings.json ]]; then
         msg_error "No ${APP} Installation Found!"
         exit
     fi
