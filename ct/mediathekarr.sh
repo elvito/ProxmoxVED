@@ -29,13 +29,13 @@ function update_script() {
         exit
     fi
     RELEASE=$(curl -fsSL https://api.github.com/repos/PCJones/MediathekArr/releases/latest | awk -F'"' '/tag_name/ { gsub(/^v/, "", $4); print $4 }')
-    if [[ ! -f /opt/${APP}_version.txt ]] || [[ "${RELEASE}" != "$(cat /opt/${APP}_version.txt)" ]]; then
+    if [[ ! -f /opt/MediathekArr/${APP}_version.txt ]] || [[ "${RELEASE}" != "$(cat /opt/MediathekArr/${APP}_version.txt)" ]]; then
     msg_info "Updating $APP..."
     systemctl stop mediathekarrserver
     systemctl stop mediathekarr
     temp_file=$(mktemp)
     #curl -fsSL "https://github.com/PCJones/MediathekArr/releases/download/${RELEASE}/linux-x64.zip" -o $temp_file
-    $STD unzip -u $temp_file '*/**' -d /opt/UmlautAdaptarr
+    $STD unzip -u $temp_file '*/**' -d /opt/MediathekArr
     systemctl start mediathekarrserver
     systemctl start mediathekarr
     echo "${RELEASE}" >"/opt/MediathekArr/${APP}_version.txt"
