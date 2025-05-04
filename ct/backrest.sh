@@ -24,7 +24,7 @@ function update_script() {
     check_container_storage
     check_container_resources
 
-    if [[ ! -f /usr/bin/local/backrest ]]; then
+    if [[ ! -f /usr/local/bin/backrest ]]; then
         msg_error "No ${APP} Installation Found!"
         exit
     fi
@@ -33,7 +33,7 @@ function update_script() {
     msg_info "Updating $APP..."
     systemctl stop backrest
     mkdir -p /temp
-    curl -fsSL "https://github.com/garethgeorge/backrest/releases/download/${RELEASE}/backrest_Linux_x86_64.tar.gz" -o $temp_file
+    curl -fsSL "https://github.com/garethgeorge/backrest/releases/download/v${RELEASE}/backrest_Linux_x86_64.tar.gz" -o $temp_file
     tar -xzf "$temp_file" -C /temp
     mv -f /temp/backrest /usr/local/bin
     rm -f $temp_file
