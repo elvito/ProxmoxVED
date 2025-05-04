@@ -28,13 +28,15 @@ function update_script() {
         msg_error "No ${APP} Installation Found!"
         exit
     fi
-    RELEASE=$(curl -fsSL https://api.github.com/repos/garethgeorge/backrest/releases/latest | grep "tag_name" | awk '{print substr($2, 2, length($2)-3)}')
+    RELEASE=$(curl -s https://api.github.com/repos/garethgeorge/backrest/releases/latest | grep "tag_name" | awk '{print substr($2, 3, length($2)-4)}')
     if [[ ! -f /${APP}_version.txt ]] || [[ "${RELEASE}" != "$(cat /${APP}_version.txt)" ]]; then
     msg_info "Updating $APP..."
     systemctl stop backrest
     mkdir -p /temp
-    curl -fsSL "https://github.com/garethgeorge/backrest/releases/download/${RELEASE}/linux-x64.zip" -o $temp_file
+    curl -fsSL "https://github.com/garethgeorge/backrest/releases/download/${RELEASE}/backrest_Linux_x86_64.tar.gz" -o $temp_file
     tar -xzf "$temp_file" -C /temp
+    mv -f /temp/backrest /usr/local/bin
+    rm -rd /temp
     systemctl start backrest
     msg_ok "$APP has been updated."
     else
