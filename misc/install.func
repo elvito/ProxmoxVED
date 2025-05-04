@@ -68,7 +68,7 @@ catch_errors() {
 
 # This function handles errors
 error_handler() {
-    source <(curl -fsSL https://raw.githubusercontent.com/elvito/ProxmoxVED/refs/heads/testing/main/misc/api.func)
+    source <(curl -fsSL https://raw.githubusercontent.com/elvito/ProxmoxVED/refs/heads/testing/misc/api.func)
     if [ -n "$SPINNER_PID" ] && ps -p "$SPINNER_PID" >/dev/null; then kill "$SPINNER_PID" >/dev/null; fi
     printf "\e[?25h"
     local exit_code="$?"
@@ -215,7 +215,7 @@ EOF
     $STD apt-get update
     $STD apt-get install -y sudo curl mc gnupg2
     msg_ok "Core dependencies installed"
-    source <(curl -fsSL https://raw.githubusercontent.com/elvito/ProxmoxVED/refs/heads/testingD/main/misc/tools.func)
+    source <(curl -fsSL https://raw.githubusercontent.com/elvito/ProxmoxVED/refs/heads/testing/misc/tools.func)
 
 }
 
