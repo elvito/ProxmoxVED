@@ -17,7 +17,7 @@ msg_info "Installing Backrest"
 temp_file=$(mktemp)
 mkdir -p /temp
 RELEASE=$(curl -s https://api.github.com/repos/garethgeorge/backrest/releases/latest | grep "tag_name" | awk '{print substr($2, 3, length($2)-4)}')
-curl -fsSL "https://github.com/garethgeorge/backrest/releases/download/${RELEASE}/backrest_Linux_x86_64.tar.gz" -o $temp_file
+curl -fsSL "https://github.com/garethgeorge/backrest/releases/download/v${RELEASE}/backrest_Linux_x86_64.tar.gz" -o $temp_file
 tar -xzf "$temp_file" -C /temp
 mv /temp/backrest /usr/local/bin
 echo "${RELEASE}" >"/backrest_version.txt"
