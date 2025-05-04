@@ -20,7 +20,7 @@ RELEASE=$(curl -s https://api.github.com/repos/garethgeorge/backrest/releases/la
 curl -fsSL "https://github.com/garethgeorge/backrest/releases/download/v${RELEASE}/backrest_Linux_x86_64.tar.gz" -o $temp_file
 tar -xzf "$temp_file" -C /temp
 mv /temp/backrest /usr/local/bin
-echo "${RELEASE}" >"/backrest_version.txt"
+echo "${RELEASE}" >"/Backrest_version.txt"
 msg_ok "Installation completed"
 
 msg_info "Creating systemd Service"   
