@@ -31,13 +31,13 @@ function update_script() {
   msg_ok "Updated Alpine Packages"
 
   msg_info "Updating tinyauth"
-  $STD service tinyauth stop
-  temp_file=$(mktemp)
-  cp /opt/tinyauth/.env /opt
-  rm -rf /opt/tinyauth
-  mkdir -p /opt/tinyauth
   RELEASE=$(curl -s https://api.github.com/repos/steveiliop56/tinyauth/releases/latest | grep "tag_name" | awk '{print substr($2, 3, length($2)-4) }')
   if [ "${RELEASE}" != "$(cat /opt/tinyauth_version.txt)" ] || [ ! -f /opt/tinyauth_version.txt ]; then
+    $STD service tinyauth stop
+    temp_file=$(mktemp)
+    cp /opt/tinyauth/.env /opt
+    rm -rf /opt/tinyauth
+    mkdir -p /opt/tinyauth
     curl -fsSL "https://github.com/steveiliop56/tinyauth/archive/refs/tags/v${RELEASE}.tar.gz" -o "$temp_file"
     tar -xzf "$temp_file" -C /opt/tinyauth --strip-components=1
     cd /opt/tinyauth/frontend
@@ -50,15 +50,13 @@ function update_script() {
     cp /opt/.env /opt/tinyauth
     echo "${RELEASE}" >/opt/tinyauth_version.txt
     rm -f "$temp_file"
+    msg_info "Restarting tinyauth"
+    $STD service tinyauth start
+    msg_ok "Restarted tinyauth"
     msg_ok "Updated tinyauth"
   else
     msg_ok "No update required. ${APP} is already at ${RELEASE}"
   fi
-
-  msg_info "Restarting tinyauth"
-  $STD service tinyauth start
-  msg_ok "Restarted tinyauth"
-
   exit 0
 }
 
