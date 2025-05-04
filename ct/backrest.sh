@@ -32,6 +32,7 @@ function update_script() {
     if [[ ! -f /${APP}_version.txt ]] || [[ "${RELEASE}" != "$(cat /${APP}_version.txt)" ]]; then
     msg_info "Updating $APP..."
     systemctl stop backrest
+    temp_file=$(mktemp)
     mkdir -p /temp
     curl -fsSL "https://github.com/garethgeorge/backrest/releases/download/v${RELEASE}/backrest_Linux_x86_64.tar.gz" -o $temp_file
     tar -xzf "$temp_file" -C /temp
