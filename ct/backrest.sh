@@ -36,6 +36,7 @@ function update_script() {
     curl -fsSL "https://github.com/garethgeorge/backrest/releases/download/${RELEASE}/backrest_Linux_x86_64.tar.gz" -o $temp_file
     tar -xzf "$temp_file" -C /temp
     mv -f /temp/backrest /usr/local/bin
+    rm -f $temp_file
     rm -rd /temp
     systemctl start backrest
     msg_ok "$APP has been updated."
