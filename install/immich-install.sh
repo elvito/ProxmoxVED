@@ -88,7 +88,7 @@ msg_ok "Dependencies Installed"
 read -r -p "Install OpenVINO dependencies for Intel HW-accelerated machine-learning? " prompt
 if [[ ${prompt,,} =~ ^(y|yes)$ ]]; then
   msg_info "Installing OpenVINO dependencies"
-  export intel_hw=1
+  touch ~/.openvino
   $STD apt-get -y install --no-install-recommends ocl-icd-libopencl1
   tmp_dir=$(mktemp -d)
   $STD pushd "$tmp_dir"
@@ -99,6 +99,7 @@ if [[ ${prompt,,} =~ ^(y|yes)$ ]]; then
   $STD dpkg -i ./*.deb
   $STD popd
   rm -rf "$tmp_dir"
+  dpkg -l | grep "intel-opencl-icd" | awk '{print $3}' >~/.intel_version
   if [[ "$CTTYPE" == "0" ]]; then
     chgrp video /dev/dri
     chmod 755 /dev/dri
@@ -113,20 +114,20 @@ msg_info "Setting up Postgresql Database"
 curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
 echo "deb https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" >/etc/apt/sources.list.d/pgdg.list
 $STD apt-get update
-$STD apt-get install -y postgresql-17
-curl -fsSLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.4.0/vectors-pg17_0.4.0_amd64.deb
-$STD dpkg -i vectors-pg17_0.4.0_amd64.deb
-rm vectors-pg17_0.4.0_amd64.deb
+$STD apt-get install -y postgresql-16
+curl -fsSLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.3.0/vectors-pg16_0.3.0_amd64.deb
+$STD dpkg -i vectors-pg16_0.3.0_amd64.deb
+rm vectors-pg16_0.3.0_amd64.deb
 DB_NAME="immich"
 DB_USER="immich"
 DB_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c18)
+sed -i -e "/^#shared_preload/s/^#//;/^shared_preload/s/''/'vectors.so'/" \
+  -e "/^#search_path/s/^#//;/^search_path/s/public'/public, vectors'/" /etc/postgresql/16/main/postgresql.conf
+systemctl restart postgresql.service
 $STD sudo -u postgres psql -c "CREATE USER $DB_USER WITH ENCRYPTED PASSWORD '$DB_PASS';"
 $STD sudo -u postgres psql -c "CREATE DATABASE $DB_NAME WITH OWNER $DB_USER ENCODING 'UTF8' TEMPLATE template0;"
 $STD sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME to $DB_USER;"
 $STD sudo -u postgres psql -c "ALTER USER $DB_USER WITH SUPERUSER;"
-$STD sudo -u postgres psql -c "ALTER SYSTEM SET shared_preload_libraries = 'vectors.so';"
-$STD sudo -u postgres psql -c "ALTER SYSTEM SET search_path TO "$user", public, vectors;"
-systemctl restart postgresql.service
 $STD sudo -u postgres psql -c "DROP EXTENSION IF EXISTS vectors;"
 $STD sudo -u postgres psql -c "CREATE EXTENSION vectors;"
 {
@@ -156,8 +157,8 @@ $STD apt-get install -t testing --no-install-recommends -y \
   libdav1d-dev \
   libhwy-dev \
   libwebp-dev
-if [[ "$intel_hw" = 1 ]]; then
-  apt-get install -t testing -y patchelf
+if [[ -f ~/.openvino ]]; then
+  $STD apt-get install -t testing -y patchelf
 fi
 msg_ok "Packages from Testing Repo Installed"
 
@@ -172,22 +173,22 @@ STAGING_DIR=/opt/staging
 BASE_REPO="https://github.com/immich-app/base-images"
 BASE_DIR=${STAGING_DIR}/base-images
 SOURCE_DIR=${STAGING_DIR}/image-source
-$STD git clone -b main "$BASE_REPO" "$BASE_DIR" # TODO: convert this git clone into a TAG download
+$STD git clone -b main "$BASE_REPO" "$BASE_DIR"
 mkdir -p "$SOURCE_DIR"
 
-cd "$STAGING_DIR" || exit
+cd "$STAGING_DIR"
 SOURCE=${SOURCE_DIR}/libjxl
 JPEGLI_LIBJPEG_LIBRARY_SOVERSION="62"
 JPEGLI_LIBJPEG_LIBRARY_VERSION="62.3.0"
 : "${LIBJXL_REVISION:=$(jq -cr '.sources[] | select(.name == "libjxl").revision' $BASE_DIR/server/bin/build-lock.json)}"
 $STD git clone https://github.com/libjxl/libjxl.git "$SOURCE"
-cd "$SOURCE" || exit
+cd "$SOURCE"
 $STD git reset --hard "$LIBJXL_REVISION"
 $STD git submodule update --init --recursive --depth 1 --recommend-shallow
 $STD git apply "$BASE_DIR"/server/bin/patches/jpegli-empty-dht-marker.patch
 $STD git apply "$BASE_DIR"/server/bin/patches/jpegli-icc-warning.patch
 mkdir build
-cd build || exit
+cd build
 $STD cmake \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_TESTING=OFF \
@@ -210,16 +211,16 @@ $STD cmake --build . -- -j"$(nproc)"
 $STD cmake --install .
 ldconfig /usr/local/lib
 $STD make clean
-cd "$STAGING_DIR" || exit
+cd "$STAGING_DIR"
 rm -rf "$SOURCE"/{build,third_party}
 
 SOURCE=${SOURCE_DIR}/libheif
 : "${LIBHEIF_REVISION:=$(jq -cr '.sources[] | select(.name == "libheif").revision' $BASE_DIR/server/bin/build-lock.json)}"
 $STD git clone https://github.com/strukturag/libheif.git "$SOURCE"
-cd "$SOURCE" || exit
+cd "$SOURCE"
 $STD git reset --hard "$LIBHEIF_REVISION"
 mkdir build
-cd build || exit
+cd build
 $STD cmake --preset=release-noplugins \
   -DWITH_DAV1D=ON \
   -DENABLE_PARALLEL_TILE_DECODING=ON \
@@ -233,13 +234,13 @@ $STD cmake --preset=release-noplugins \
 $STD make install -j "$(nproc)"
 ldconfig /usr/local/lib
 $STD make clean
-cd "$STAGING_DIR" || exit
+cd "$STAGING_DIR"
 rm -rf "$SOURCE"/build
 
 SOURCE=${SOURCE_DIR}/libraw
 : "${LIBRAW_REVISION:=$(jq -cr '.sources[] | select(.name == "libraw").revision' $BASE_DIR/server/bin/build-lock.json)}"
 $STD git clone https://github.com/libraw/libraw.git "$SOURCE"
-cd "$SOURCE" || exit
+cd "$SOURCE"
 $STD git reset --hard "$LIBRAW_REVISION"
 $STD autoreconf --install
 $STD ./configure
@@ -247,31 +248,38 @@ $STD make -j"$(nproc)"
 $STD make install
 ldconfig /usr/local/lib
 $STD make clean
-cd "$STAGING_DIR" || exit
+cd "$STAGING_DIR"
 
 SOURCE=$SOURCE_DIR/imagemagick
 : "${IMAGEMAGICK_REVISION:=$(jq -cr '.sources[] | select(.name == "imagemagick").revision' $BASE_DIR/server/bin/build-lock.json)}"
 $STD git clone https://github.com/ImageMagick/ImageMagick.git "$SOURCE"
-cd "$SOURCE" || exit
+cd "$SOURCE"
 $STD git reset --hard "$IMAGEMAGICK_REVISION"
 $STD ./configure --with-modules
 $STD make -j"$(nproc)"
 $STD make install
 ldconfig /usr/local/lib
 $STD make clean
-cd "$STAGING_DIR" || exit
+cd "$STAGING_DIR"
 
 SOURCE=$SOURCE_DIR/libvips
 : "${LIBVIPS_REVISION:=$(jq -cr '.sources[] | select(.name == "libvips").revision' $BASE_DIR/server/bin/build-lock.json)}"
 $STD git clone https://github.com/libvips/libvips.git "$SOURCE"
-cd "$SOURCE" || exit
+cd "$SOURCE"
 $STD git reset --hard "$LIBVIPS_REVISION"
 $STD meson setup build --buildtype=release --libdir=lib -Dintrospection=disabled -Dtiff=disabled
-cd build || exit
+cd build
 $STD ninja install
 ldconfig /usr/local/lib
-cd "$STAGING_DIR" || exit
+cd "$STAGING_DIR"
 rm -rf "$SOURCE"/build
+{
+  echo "$IMAGEMAGICK_REVISION"
+  echo "$LIBHEIF_REVISION"
+  echo "$LIBJXL_REVISION"
+  echo "$LIBRAW_REVISION"
+  echo "$LIBVIPS_REVISION"
+} >~/.immich_library_revisions
 msg_ok "Custom Photo-processing Library Compiled"
 
 msg_info "Installing ${APPLICATION} (more patience please)"
@@ -289,50 +297,52 @@ mkdir -p "$INSTALL_DIR"
 mv "$APPLICATION-$RELEASE"/ "$SRC_DIR"
 mkdir -p {"${APP_DIR}","${UPLOAD_DIR}","${GEO_DIR}","${ML_DIR}","${INSTALL_DIR}"/cache}
 
-cd "$SRC_DIR"/server || exit
+cd "$SRC_DIR"/server
 $STD npm install -g node-gyp node-pre-gyp
 $STD npm ci
 $STD npm run build
 $STD npm prune --omit=dev --omit=optional
-cd "$SRC_DIR"/open-api/typescript-sdk || exit
+cd "$SRC_DIR"/open-api/typescript-sdk
 $STD npm ci
 $STD npm run build
-cd "$SRC_DIR"/web || exit
+cd "$SRC_DIR"/web
 $STD npm ci
 $STD npm run build
-cd "$SRC_DIR" || exit
+cd "$SRC_DIR"
 cp -a server/{node_modules,dist,bin,resources,package.json,package-lock.json,start*.sh} "$APP_DIR"/
 cp -a web/build "$APP_DIR"/www
 cp LICENSE "$APP_DIR"
 cp "$BASE_DIR"/server/bin/build-lock.json "$APP_DIR"
 msg_ok "Installed Immich Web Components"
 
-cd "$SRC_DIR"/machine-learning || exit
+cd "$SRC_DIR"/machine-learning
 $STD python3 -m venv "$ML_DIR/ml-venv"
-if [[ "$intel_hw" = 1 ]]; then
-  msg_info "Installing Immich HW-accelerated machine-learning"
+if [[ -f ~/.openvino ]]; then
+  msg_info "Installing HW-accelerated machine-learning"
   (
     source "$ML_DIR"/ml-venv/bin/activate
-    # $STD uv sync --extra openvino --active
     $STD pip3 install uv
     uv -q sync --extra openvino --no-cache --active
   )
   patchelf --clear-execstack "$ML_DIR"/ml-venv/lib/python3.11/site-packages/onnxruntime/capi/onnxruntime_pybind11_state.cpython-311-x86_64-linux-gnu.so
   msg_ok "Installed HW-accelerated machine-learning"
 else
-  msg_info "Installing Immich machine-learning"
+  msg_info "Installing machine-learning"
   (
     source "$ML_DIR"/ml-venv/bin/activate
     $STD pip3 install uv
     uv -q sync --extra cpu --no-cache --active
   )
-  msg_ok "Installed Immich machine-learning"
+  msg_ok "Installed machine-learning"
 fi
-cd "$SRC_DIR" || exit
+cd "$SRC_DIR"
 cp -a machine-learning/{ann,immich_ml} "$ML_DIR"
+if [[ -f ~/.openvino ]]; then
+  sed -i "/intra_op/s/int = 0/int = os.cpu_count() or 0/" "$ML_DIR"/immich_ml/config.py
+fi
 ln -sf "$APP_DIR"/resources "$INSTALL_DIR"
 
-cd "$APP_DIR" || exit
+cd "$APP_DIR"
 grep -Rl /usr/src | xargs -n1 sed -i "s|\/usr/src|$INSTALL_DIR|g"
 grep -RlE "'/build'" | xargs -n1 sed -i "s|'/build'|'$APP_DIR'|g"
 sed -i "s@\"/cache\"@\"$INSTALL_DIR/cache\"@g" "$ML_DIR"/immich_ml/config.py
@@ -346,7 +356,7 @@ $STD npm i -g @immich/cli
 msg_ok "Installed Immich CLI"
 
 msg_info "Installing GeoNames data"
-cd "$GEO_DIR" || exit
+cd "$GEO_DIR"
 URL_LIST=(
   https://download.geonames.org/export/dump/admin1CodesASCII.txt
   https://download.geonames.org/export/dump/admin2Codes.txt
@@ -357,7 +367,7 @@ echo "${URL_LIST[@]}" | xargs -n1 -P 8 wget -q
 unzip -q cities500.zip
 date --iso-8601=seconds | tr -d "\n" >geodata-date.txt
 rm cities500.zip
-cd "$INSTALL_DIR" || exit
+cd "$INSTALL_DIR"
 ln -s "$GEO_DIR" "$APP_DIR"
 msg_ok "Installed GeoNames data"
 
@@ -368,7 +378,7 @@ msg_ok "Installed ${APPLICATION}"
 
 msg_info "Creating user, env file, scripts & services"
 $STD useradd -U -s /usr/sbin/nologin -r -M -d "$INSTALL_DIR" immich
-if [[ "$intel_hw" = 1 ]]; then
+if [[ -f ~/.openvino ]]; then
   usermod -aG video,render immich
 fi
 cat <<EOF >"${INSTALL_DIR}"/.env
