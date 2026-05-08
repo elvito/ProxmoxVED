@@ -38,11 +38,9 @@ msg_ok "Installed Dependencies"
 
 NODE_VERSION="24" NODE_MODULE="yarn" setup_nodejs
 FFMPEG_TYPE="binary" setup_ffmpeg
-DENO_ASSET="deno-x86_64-unknown-linux-gnu.zip"
-YT_DLP_ASSET="yt-dlp_linux"
 
-fetch_and_deploy_gh_release "deno" "denoland/deno" "prebuild" "latest" "/usr/local/bin" "$DENO_ASSET"
-fetch_and_deploy_gh_release "yt-dlp" "yt-dlp/yt-dlp" "singlefile" "latest" "/usr/local/bin" "$YT_DLP_ASSET"
+fetch_and_deploy_gh_release "deno" "denoland/deno" "prebuild" "latest" "/usr/local/bin" "deno-x86_64-unknown-linux-gnu.zip"
+fetch_and_deploy_gh_release "yt-dlp" "yt-dlp/yt-dlp" "singlefile" "latest" "/usr/local/bin" "yt-dlp_linux"
 
 msg_info "Installing Apprise"
 export PIPX_HOME=/opt/pipx
