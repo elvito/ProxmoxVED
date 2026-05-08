@@ -11,7 +11,7 @@
   "interface_port": 8945,
   "documentation": "https://github.com/kieraneglin/pinchflat/wiki",
   "website": "https://github.com/kieraneglin/pinchflat",
-  "logo": "https://raw.githubusercontent.com/kieraneglin/pinchflat/master/priv/static/images/originals/logo-white-wordmark-with-background.png",
+  "logo": "https://raw.githubusercontent.com/kieraneglin/pinchflat/67d8bd5598f4461c5435bcc66fc8d02b00c607cb/priv/static/images/icon-2024-03-20.png",
   "description": "Pinchflat is a self-hosted YouTube media manager built with yt-dlp for automatically downloading and organizing content from channels and playlists.",
   "install_methods": [
     {
@@ -33,11 +33,11 @@
   },
   "notes": [
     {
-      "text": "For large media libraries, use an external mount path such as `/mnt/pinchflat` for downloads.",
-      "type": "info"
+      "text": "For large media libraries, mount external storage at `/opt/pinchflat/downloads` before downloading media to avoid filling the LXC disk.",
+      "type": "warning"
     },
     {
-      "text": "Pinchflat data is stored in `/opt/pinchflat/config`; downloaded media is stored in the selected downloads path.",
+      "text": "Pinchflat data is stored in `/opt/pinchflat/config`; downloaded media is stored in `/opt/pinchflat/downloads`.",
       "type": "info"
     }
   ]

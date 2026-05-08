@@ -58,22 +58,11 @@ function update_script() {
   exit
 }
 
-DOWNLOADS_PATH=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Pinchflat Downloads" --inputbox \
-"Downloads path inside the LXC.
-
-Default: /opt/pinchflat/downloads
-Example external mount path: /mnt/pinchflat
-
-If the path does not exist during installation, it will be created locally.
-You can later stop the LXC, mount external storage at the same path, and start it again." \
-18 78 "${DOWNLOADS_PATH:-/opt/pinchflat/downloads}" 3>&1 1>&2 2>&3 || true)
-DOWNLOADS_PATH="${DOWNLOADS_PATH:-/opt/pinchflat/downloads}"
-export DOWNLOADS_PATH
-
 start
 build_container
 description
 msg_ok "Completed Successfully!\n"
+
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
 echo -e "${INFO}${YW} Access it using the following URL:${CL}"
 echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:8945${CL}"

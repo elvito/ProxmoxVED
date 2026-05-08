@@ -36,19 +36,11 @@ $STD apt install -y \
   zip
 msg_ok "Installed Dependencies"
 
-NODE_VERSION="20" NODE_MODULE="yarn" setup_nodejs
+NODE_VERSION="24" NODE_MODULE="yarn" setup_nodejs
 FFMPEG_TYPE="binary" setup_ffmpeg
+DENO_ASSET="deno-x86_64-unknown-linux-gnu.zip"
+YT_DLP_ASSET="yt-dlp_linux"
 
-case "$(dpkg --print-architecture)" in
-  arm64)
-    DENO_ASSET="deno-aarch64-unknown-linux-gnu.zip"
-    YT_DLP_ASSET="yt-dlp_linux_aarch64"
-    ;;
-  *)
-    DENO_ASSET="deno-x86_64-unknown-linux-gnu.zip"
-    YT_DLP_ASSET="yt-dlp_linux"
-    ;;
-esac
 fetch_and_deploy_gh_release "deno" "denoland/deno" "prebuild" "latest" "/usr/local/bin" "$DENO_ASSET"
 fetch_and_deploy_gh_release "yt-dlp" "yt-dlp/yt-dlp" "singlefile" "latest" "/usr/local/bin" "$YT_DLP_ASSET"
 
@@ -67,7 +59,7 @@ fetch_and_deploy_gh_release "pinchflat" "kieraneglin/pinchflat" "tarball" "lates
 
 msg_info "Configuring Pinchflat"
 CONFIG_PATH="/opt/pinchflat/config"
-DOWNLOADS_PATH="${DOWNLOADS_PATH:-/opt/pinchflat/downloads}"
+DOWNLOADS_PATH="/opt/pinchflat/downloads"
 
 mkdir -p \
   /etc/elixir_tzdata_data \
@@ -114,6 +106,7 @@ cp -r _build/prod/rel/pinchflat /opt/pinchflat/app
 msg_ok "Built Pinchflat"
 
 msg_info "Creating Service"
+
 cat <<EOF >/etc/systemd/system/pinchflat.service
 [Unit]
 Description=Pinchflat
@@ -133,19 +126,9 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
+
 systemctl enable -q --now pinchflat
 msg_ok "Created Service"
-
-cat <<EOF >/opt/pinchflat/README
-Pinchflat is installed as a systemd service.
-
-Web UI: http://<LXC-IP>:8945
-Config path: ${CONFIG_PATH}
-Downloads path: ${DOWNLOADS_PATH}
-
-If an external downloads path was selected, mount it inside the LXC at the same path.
-If the path did not exist during installation, it was created locally and can later be replaced by the mount.
-EOF
 
 motd_ssh
 customize
