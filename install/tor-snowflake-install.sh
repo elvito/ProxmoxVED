@@ -2,7 +2,7 @@
 
 # Copyright (c) 2021-2025 community-scripts ORG
 # Author: KernelSailor
-# License: MIT | https://github.com/--full/ProxmoxVED/raw/main/LICENSE
+# License: MIT | https://github.com/montagneid/ProxmoxVED/raw/main/LICENSE
 # Source: https://snowflake.torproject.org/
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"

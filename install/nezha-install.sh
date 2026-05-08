@@ -2,7 +2,7 @@
 
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: GitHub Copilot (GPT-5.3-Codex)
-# License: MIT | https://github.com/--full/ProxmoxVED/raw/main/LICENSE
+# License: MIT | https://github.com/montagneid/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/nezhahq/nezha
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"

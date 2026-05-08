@@ -2,7 +2,7 @@
 
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: onionrings29
-# License: MIT | https://github.com/--full/ProxmoxVED/raw/main/LICENSE
+# License: MIT | https://github.com/montagneid/ProxmoxVED/raw/main/LICENSE
 # Source: https://plane.so
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"

@@ -2,7 +2,7 @@
 
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: CanbiZ (MickLesk)
-# License: MIT | https://github.com/--full/ProxmoxVED/raw/main/LICENSE
+# License: MIT | https://github.com/montagneid/ProxmoxVED/raw/main/LICENSE
 # Source: https://neko.m1k1o.net/
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
