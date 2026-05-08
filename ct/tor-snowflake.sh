@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVED/main/misc/build.func)
+source <(curl -fsSL https://raw.githubusercontent.com/--full/ProxmoxVED/main/misc/build.func)
 
 # Copyright (c) 2021-2025 community-scripts ORG
 # Author: KernelSailor
-# License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
+# License: MIT | https://github.com/--full/ProxmoxVED/raw/main/LICENSE
 # Source: https://snowflake.torproject.org/
 
 APP="tor-snowflake"
