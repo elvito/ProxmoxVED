@@ -21,16 +21,28 @@ $STD apt-get install -y \
   ca-certificates \
   uuid-runtime \
   nginx \
-  vsftpd  
+  vsftpd
+msg_ok "Installed Dependencies"
 
-msg_info "Installing .NET SDK 10.0 using Microsoft install script"
-wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh
-chmod +x dotnet-install.sh
-$STD ./dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet
-rm dotnet-install.sh
-ln -sf /usr/share/dotnet/dotnet /usr/bin/dotnet
-export DOTNET_ROOT=/usr/share/dotnet
-export PATH=$PATH:$DOTNET_ROOT
+msg_info "Installing .NET SDK 10.0"
+# Get OS version info which adds the $ID and $VERSION_ID variables
+source /etc/os-release
+
+# Download the Microsoft keys
+sudo apt-get install -y gpg wget
+wget https://packages.microsoft.com/keys/microsoft.asc
+cat microsoft.asc | gpg --dearmor -o microsoft.asc.gpg
+
+# Add the Microsoft repository to the system's sources list
+wget https://packages.microsoft.com/config/$ID/$VERSION_ID/prod.list
+sudo mv prod.list /etc/apt/sources.list.d/microsoft-prod.list
+
+# Move the key to the appropriate place
+sudo mv microsoft.asc.gpg $(cat /etc/apt/sources.list.d/microsoft-prod.list | grep -oP "(?<=signed-by=).*(?=\])")
+
+# Update packages and install .NET
+sudo apt-get update && \
+  sudo apt-get install -y {dotnet-package}
 msg_ok "Installed .NET SDK 10.0"
 
 msg_info "Installing dotnet Umbraco templates and create project (Patience)"
