@@ -44,6 +44,10 @@ cd /var/www/html/$var_project_name
 UMBRACO_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
 
 jq --arg umbracopass "$UMBRACO_PASS" '. + {
+  "ConnectionStrings": {
+    "umbracoDbDSN": "Data Source=|DataDirectory|/Umbraco.sqlite.db;Cache=Shared;Foreign Keys=True;Pooling=True",
+    "umbracoDbDSN_ProviderName": "Microsoft.Data.Sqlite"
+  },
   "Umbraco": {
     "CMS": {
       "_Comment": "Remove the Unattended section after first run",    
