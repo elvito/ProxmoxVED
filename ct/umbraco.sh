@@ -28,9 +28,19 @@ function update_script() {
         exit
     fi
     msg_info "Updating ${APP} LXC"
-    $STD apt-get update
-    $STD apt-get -y upgrade
-    msg_ok "Updated successfully!"
+    $STD apt update
+    $STD apt -y upgrade
+    msg_ok "Updated ${APP} LXC"
+
+    msg_info "Updating .NET SDK"
+    $STD apt install -y dotnet-sdk-10.0
+    msg_ok "Updated .NET SDK"
+
+    msg_info "Updating Umbraco Templates"
+    $STD dotnet new update
+    msg_ok "Updated Umbraco Templates"
+
+    msg_ok "Update completed successfully!"
     exit
 }
 
