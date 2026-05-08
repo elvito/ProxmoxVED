@@ -37,10 +37,6 @@
             "type": "info"
         },
         {
-            "text": "The PostgreSQL Provider is not officially supported by Umbraco HQ.",
-            "type": "info"
-        },
-        {
             "text": "The FTPProfile.pubxml can be used to publish directly from Visual Studio, but you can also use the built-in code editor in the Umbraco backoffice.",
             "type": "info"
         }        
