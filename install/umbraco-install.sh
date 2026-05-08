@@ -2,7 +2,7 @@
 
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: Joost van den Berg
-# License: MIT | https://github.com/montagneid/ProxmoxVE/raw/main/LICENSE
+# License: MIT | https://github.com/--full/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/umbraco/Umbraco-CMS
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
@@ -18,10 +18,10 @@ var_project_name="cms"
 msg_info "Installing Dependencies"
 $STD apt-get update
 $STD apt-get install -y \
-  curl \
-  wget \
   ca-certificates \
-  uuid-runtime
+  uuid-runtime \
+  nginx \
+  vsftpd  
 
 msg_info "Installing .NET SDK 10.0 using Microsoft install script"
 wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh
@@ -32,12 +32,6 @@ ln -sf /usr/share/dotnet/dotnet /usr/bin/dotnet
 export DOTNET_ROOT=/usr/share/dotnet
 export PATH=$PATH:$DOTNET_ROOT
 msg_ok "Installed .NET SDK 10.0"
-
-msg_info "Installing Nginx and FTP Server"
-$STD apt-get install -y \
-  nginx \
-  vsftpd
-msg_ok "Installed Nginx and FTP Server"
 
 read -r -p "${TAB3}Enable PostgreSQL database (allow remote connections)? (Default: SQLite) <y/N> " prompt
 if [[ ${prompt,,} =~ ^(y|yes)$ ]]; then
@@ -60,7 +54,6 @@ msg_ok "Umbraco templates installed and project created"
 msg_info "Configuring database connection and unattended setup"
 cd /var/www/html/$var_project_name
 UMBRACO_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
-apt-get install -y jq &>/dev/null
 
 if [[ ${prompt,,} =~ ^(y|yes)$ ]]; then
   $STD dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
@@ -218,7 +211,7 @@ cat >"$PUBLISH_PROFILE_DIR/FTPProfile.pubxml" <<EOF
     <ExcludeApp_Data>false</ExcludeApp_Data>
     <ProjectGuid>${PROJECT_GUID}</ProjectGuid>
     <publishUrl>${CONTAINER_IP}</publishUrl>
-    <DeleteExistingFiles>true</DeleteExistingFiles>
+    <DeleteExistingFiles>false</DeleteExistingFiles>
     <FtpPassiveMode>true</FtpPassiveMode>
     <FtpSitePath>${var_project_name}-publish</FtpSitePath>
     <UserName>ftpuser</UserName>
