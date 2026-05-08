@@ -51,7 +51,14 @@ function update_script() {
       msg_info "Building HyperDX"
       $STD yarn install
       $STD yarn workspace @hyperdx/common-utils run build
-      $STD yarn workspace @hyperdx/api run build
+      rm -rf /opt/clickstack/packages/api/build
+      yarn workspace @hyperdx/api exec tsc >>"$(get_active_logfile)" 2>&1 || true
+      $STD yarn workspace @hyperdx/api exec tsc-alias
+      cp -r /opt/clickstack/packages/api/src/opamp/proto /opt/clickstack/packages/api/build/opamp/ 2>/dev/null || true
+      [[ -f /opt/clickstack/packages/api/build/index.js ]] || {
+        msg_error "HyperDX API build failed: build/index.js not found"
+        exit 1
+      }
       $STD yarn workspace @hyperdx/app run build
       msg_ok "Built HyperDX"
 
@@ -83,6 +90,7 @@ function update_script() {
   exit
 }
 
+export CLICKSTACK="no"
 if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "CLICKSTACK" --yesno "Install ClickStack observability stack?\n\n(HyperDX UI + OTel Collector + MongoDB)\nRequires: 4 CPU, 8GB RAM, 30GB Disk" 12 58); then
   export CLICKSTACK="yes"
   var_cpu="4"
