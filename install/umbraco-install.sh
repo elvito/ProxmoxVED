@@ -33,18 +33,6 @@ export DOTNET_ROOT=/usr/share/dotnet
 export PATH=$PATH:$DOTNET_ROOT
 msg_ok "Installed .NET SDK 10.0"
 
-read -r -p "${TAB3}Enable PostgreSQL database (allow remote connections)? (Default: SQLite) <y/N> " prompt
-if [[ ${prompt,,} =~ ^(y|yes)$ ]]; then
-  msg_info "Setting up PostgreSQL (Patience)"
-  PG_VERSION="17" setup_postgresql
-  PG_DB_NAME="${var_project_name}_db" PG_DB_USER="${var_project_name}_user" PG_DB_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
-  setup_postgresql_db
-  sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/17/main/postgresql.conf
-  echo "host    all             all             0.0.0.0/0               scram-sha-256" >> /etc/postgresql/17/main/pg_hba.conf
-  systemctl restart postgresql
-  msg_ok "PostgreSQL setup completed"
-fi
-
 msg_info "Installing dotnet Umbraco templates and create project (Patience)"
 cd /var/www/html
 $STD dotnet new install Umbraco.Templates
@@ -55,25 +43,12 @@ msg_info "Configuring database connection and unattended setup"
 cd /var/www/html/$var_project_name
 UMBRACO_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
 
-if [[ ${prompt,,} =~ ^(y|yes)$ ]]; then
-  $STD dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
-  $STD dotnet add package Our.Umbraco.PostgreSql
-  jq --arg dbname "$PG_DB_NAME" \
-    --arg dbuser "$PG_DB_USER" \
-    --arg dbpass "$PG_DB_PASS" '. + {
-    "ConnectionStrings": {
-      "umbracoDbDSN": ("Host=localhost;Port=5432;SSL Mode=Allow;Database=" + $dbname + ";Username=" + $dbuser + ";Password=" + $dbpass),
-      "umbracoDbDSN_ProviderName": "Npgsql2"
-    }
-  }' /var/www/html/$var_project_name/appsettings.json > /tmp/appsettings.tmp && mv /tmp/appsettings.tmp /var/www/html/$var_project_name/appsettings.json
-else
-  jq '. + {
-    "ConnectionStrings": {
-      "umbracoDbDSN": "Data Source=|DataDirectory|/Umbraco.sqlite.db;Cache=Shared;Foreign Keys=True;Pooling=True",
-      "umbracoDbDSN_ProviderName": "Microsoft.Data.Sqlite"
-    }
-  }' /var/www/html/$var_project_name/appsettings.json > /tmp/appsettings.tmp && mv /tmp/appsettings.tmp /var/www/html/$var_project_name/appsettings.json
-fi
+jq '. + {
+  "ConnectionStrings": {
+    "umbracoDbDSN": "Data Source=|DataDirectory|/Umbraco.sqlite.db;Cache=Shared;Foreign Keys=True;Pooling=True",
+    "umbracoDbDSN_ProviderName": "Microsoft.Data.Sqlite"
+  }
+}' /var/www/html/$var_project_name/appsettings.json > /tmp/appsettings.tmp && mv /tmp/appsettings.tmp /var/www/html/$var_project_name/appsettings.json
 
 jq --arg umbracopass "$UMBRACO_PASS" '. + {
   "Umbraco": {
