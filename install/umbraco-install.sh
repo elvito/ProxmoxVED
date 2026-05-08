@@ -2,7 +2,7 @@
 
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: Joost van den Berg
-# License: MIT | https://github.com/montagneid/ProxmoxVE/raw/main/LICENSE
+# License: MIT | https://github.com/montagneid/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/umbraco/Umbraco-CMS
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
@@ -18,38 +18,20 @@ var_project_name="cms"
 msg_info "Installing Dependencies"
 $STD apt-get update
 $STD apt-get install -y \
-  curl \
-  wget \
   ca-certificates \
-  uuid-runtime
-
-msg_info "Installing .NET SDK 10.0 using Microsoft install script"
-wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh
-chmod +x dotnet-install.sh
-$STD ./dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet
-rm dotnet-install.sh
-ln -sf /usr/share/dotnet/dotnet /usr/bin/dotnet
-export DOTNET_ROOT=/usr/share/dotnet
-export PATH=$PATH:$DOTNET_ROOT
-msg_ok "Installed .NET SDK 10.0"
-
-msg_info "Installing Nginx and FTP Server"
-$STD apt-get install -y \
+  uuid-runtime \
   nginx \
   vsftpd
-msg_ok "Installed Nginx and FTP Server"
+msg_ok "Installed Dependencies"
 
-read -r -p "${TAB3}Enable PostgreSQL database (allow remote connections)? (Default: SQLite) <y/N> " prompt
-if [[ ${prompt,,} =~ ^(y|yes)$ ]]; then
-  msg_info "Setting up PostgreSQL (Patience)"
-  PG_VERSION="17" setup_postgresql
-  PG_DB_NAME="${var_project_name}_db" PG_DB_USER="${var_project_name}_user" PG_DB_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
-  setup_postgresql_db
-  sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/17/main/postgresql.conf
-  echo "host    all             all             0.0.0.0/0               scram-sha-256" >> /etc/postgresql/17/main/pg_hba.conf
-  systemctl restart postgresql
-  msg_ok "PostgreSQL setup completed"
-fi
+msg_info "Installing .NET SDK 10.0"
+wget https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb
+rm packages-microsoft-prod.deb
+
+sudo apt-get update && \
+  sudo apt-get install -y dotnet-sdk-10.0
+msg_ok "Installed .NET SDK 10.0"
 
 msg_info "Installing dotnet Umbraco templates and create project (Patience)"
 cd /var/www/html
@@ -60,29 +42,12 @@ msg_ok "Umbraco templates installed and project created"
 msg_info "Configuring database connection and unattended setup"
 cd /var/www/html/$var_project_name
 UMBRACO_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
-apt-get install -y jq &>/dev/null
-
-if [[ ${prompt,,} =~ ^(y|yes)$ ]]; then
-  $STD dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
-  $STD dotnet add package Our.Umbraco.PostgreSql
-  jq --arg dbname "$PG_DB_NAME" \
-    --arg dbuser "$PG_DB_USER" \
-    --arg dbpass "$PG_DB_PASS" '. + {
-    "ConnectionStrings": {
-      "umbracoDbDSN": ("Host=localhost;Port=5432;SSL Mode=Allow;Database=" + $dbname + ";Username=" + $dbuser + ";Password=" + $dbpass),
-      "umbracoDbDSN_ProviderName": "Npgsql2"
-    }
-  }' /var/www/html/$var_project_name/appsettings.json > /tmp/appsettings.tmp && mv /tmp/appsettings.tmp /var/www/html/$var_project_name/appsettings.json
-else
-  jq '. + {
-    "ConnectionStrings": {
-      "umbracoDbDSN": "Data Source=|DataDirectory|/Umbraco.sqlite.db;Cache=Shared;Foreign Keys=True;Pooling=True",
-      "umbracoDbDSN_ProviderName": "Microsoft.Data.Sqlite"
-    }
-  }' /var/www/html/$var_project_name/appsettings.json > /tmp/appsettings.tmp && mv /tmp/appsettings.tmp /var/www/html/$var_project_name/appsettings.json
-fi
 
 jq --arg umbracopass "$UMBRACO_PASS" '. + {
+  "ConnectionStrings": {
+    "umbracoDbDSN": "Data Source=|DataDirectory|/Umbraco.sqlite.db;Cache=Shared;Foreign Keys=True;Pooling=True",
+    "umbracoDbDSN_ProviderName": "Microsoft.Data.Sqlite"
+  },
   "Umbraco": {
     "CMS": {
       "_Comment": "Remove the Unattended section after first run",    
@@ -218,7 +183,7 @@ cat >"$PUBLISH_PROFILE_DIR/FTPProfile.pubxml" <<EOF
     <ExcludeApp_Data>false</ExcludeApp_Data>
     <ProjectGuid>${PROJECT_GUID}</ProjectGuid>
     <publishUrl>${CONTAINER_IP}</publishUrl>
-    <DeleteExistingFiles>true</DeleteExistingFiles>
+    <DeleteExistingFiles>false</DeleteExistingFiles>
     <FtpPassiveMode>true</FtpPassiveMode>
     <FtpSitePath>${var_project_name}-publish</FtpSitePath>
     <UserName>ftpuser</UserName>
