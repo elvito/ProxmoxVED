@@ -14,8 +14,7 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apt install -y \
-  git
+$STD apt install -y git
 msg_ok "Installed Dependencies"
 
 NODE_VERSION="22" setup_nodejs
