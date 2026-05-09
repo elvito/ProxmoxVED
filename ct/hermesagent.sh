@@ -52,16 +52,10 @@ start
 build_container
 description
 
-msg_ok "Completed successfully!\n"
+msg_ok "Completed Successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
 echo -e "${INFO}${YW} Connect via SSH and configure your LLM provider:${CL}"
 echo -e "${TAB}${GATEWAY}${BGN}ssh root@${IP}${CL}"
 echo -e "${TAB}${BGN}su - hermes${CL}"
 echo -e "${TAB}${BGN}hermes setup${CL}"
-echo -e "${INFO}${YW} API Server (OpenAI-compatible):${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:8642/v1${CL}"
-echo -e "${INFO}${YW} API key stored at:${CL}"
-echo -e "${TAB}${BGN}/home/hermes/.hermes/.env${CL}"
-echo -e "${INFO}${YW} Web Dashboard (via SSH tunnel):${CL}"
-echo -e "${TAB}${BGN}ssh -fNL 9119:localhost:9119 root@${IP}${CL}"
-echo -e "${TAB}${BGN}Then open: http://localhost:9119${CL}"
+echo -e "${INFO}${YW} Service details are shown on each SSH login.${CL}"
