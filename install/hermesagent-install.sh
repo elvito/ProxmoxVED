@@ -24,16 +24,22 @@ useradd -m -s /bin/bash hermes
 loginctl enable-linger hermes
 msg_ok "Created Hermes User"
 
+msg_warn "WARNING: This script will run an external installer from a third-party source (https://hermes-agent.nousresearch.com/)."
+msg_warn "The following code is NOT maintained or audited by our repository."
+msg_warn "If you have any doubts or concerns, please review the installer code before proceeding:"
+msg_custom "${TAB3}${GATEWAY}${BGN}${CL}" "\e[1;34m" "→  https://hermes-agent.nousresearch.com/install.sh"
+echo
+read -r -p "${TAB3}Do you want to continue? [y/N]: " CONFIRM
+if [[ ! "$CONFIRM" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+  msg_error "Aborted by user. No changes have been made."
+  exit 10
+fi
+
 msg_info "Installing Hermes Agent"
 $STD setsid --wait env \
   HOME=/home/hermes \
   PATH=/home/hermes/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
   bash <(curl -fsSL https://hermes-agent.nousresearch.com/install.sh) --skip-setup --hermes-home /home/hermes/.hermes --dir /home/hermes/.hermes/hermes-agent
-
-if [[ ! -x /home/hermes/.local/bin/hermes ]]; then
-  msg_error "Hermes binary not found after installation"
-  exit 1
-fi
 
 chown -R hermes:hermes /home/hermes
 git config --system --add safe.directory /home/hermes/.hermes/hermes-agent 2>/dev/null || true

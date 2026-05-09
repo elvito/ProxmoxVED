@@ -29,6 +29,17 @@ function update_script() {
     exit
   fi
 
+  msg_warn "WARNING: This script will run an external installer from a third-party source (https://hermes-agent.nousresearch.com/)."
+  msg_warn "The following code is NOT maintained or audited by our repository."
+  msg_warn "If you have any doubts or concerns, please review the installer code before proceeding:"
+  msg_custom "${TAB3}${GATEWAY}${BGN}${CL}" "\e[1;34m" "→  hermes update (https://hermes-agent.nousresearch.com/)"
+  echo
+  read -r -p "${TAB3}Do you want to continue? [y/N]: " CONFIRM
+  if [[ ! "$CONFIRM" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    msg_error "Aborted by user. No changes have been made."
+    exit 10
+  fi
+
   msg_info "Stopping Services"
   systemctl stop hermes-dashboard
   msg_ok "Stopped Services"
@@ -52,7 +63,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
 echo -e "${INFO}${YW} Connect via SSH and configure your LLM provider:${CL}"
 echo -e "${TAB}${GATEWAY}${BGN}ssh root@${IP}${CL}"
