@@ -45,12 +45,11 @@ if [[ ! "$CONFIRM" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 fi
 
 msg_info "Installing Hermes Agent"
-(
-  set -a
-  source /etc/default/hermes
-  set +a
-  $STD bash <(curl -fsSL https://hermes-agent.nousresearch.com/install.sh) --skip-setup --hermes-home /home/hermes/.hermes --dir /home/hermes/.hermes/hermes-agent
-)
+$STD setsid --wait env \
+  HOME=/home/hermes \
+  PATH=/home/hermes/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  NODE_OPTIONS=${NODE_OPTIONS} \
+  bash <(curl -fsSL https://hermes-agent.nousresearch.com/install.sh) --skip-setup --hermes-home /home/hermes/.hermes --dir /home/hermes/.hermes/hermes-agent
 chown -R hermes:hermes /home/hermes
 chmod 750 /home/hermes
 chmod 700 /home/hermes/.hermes
@@ -91,7 +90,6 @@ UMask=0077
 WorkingDirectory=/home/hermes
 ExecStart=/home/hermes/.local/bin/hermes dashboard --host 127.0.0.1 --port 9119 --no-open
 EnvironmentFile=/etc/default/hermes
-EnvironmentFile=/home/hermes/.hermes/.env
 Restart=on-failure
 RestartSec=5
 ProtectProc=invisible
