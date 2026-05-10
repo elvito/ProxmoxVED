@@ -39,7 +39,7 @@ function update_script() {
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "pinchflat" "kieraneglin/pinchflat" "tarball" "latest" "/opt/pinchflat-src"
 
     msg_info "Building Pinchflat"
-    cd /opt/pinchflat-src || exit 1
+    cd /opt/pinchflat-src
     export MIX_ENV=prod
     export ERL_FLAGS="+JPperf true"
     $STD mix deps.get --only prod
