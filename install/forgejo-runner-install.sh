@@ -11,6 +11,7 @@ catch_errors
 setting_up_container
 network_check
 update_os
+setup_yq
 
 # Get required configuration — skip prompts if already set (generated/unattended mode)
 if [[ -z "${var_forgejo_instance:-}" ]]; then
@@ -18,8 +19,17 @@ if [[ -z "${var_forgejo_instance:-}" ]]; then
   var_forgejo_instance="${var_forgejo_instance:-https://codeberg.org}"
 fi
 
+if [[ -z "${var_forgejo_runner_uuid:-}" ]]; then
+  read -r -p "${TAB3}Forgejo Runner UUID: " var_forgejo_runner_uuid
+fi
+
+if [[ -z "${var_forgejo_runner_uuid:-}" ]]; then
+  msg_error "No runner UUID provided. Cannot continue."
+  exit 1
+fi
+
 if [[ -z "${var_forgejo_runner_token:-}" ]]; then
-  read -r -p "${TAB3}Forgejo Runner Registration Token: " var_forgejo_runner_token
+  read -r -p "${TAB3}Forgejo Runner Token: " var_forgejo_runner_token
 fi
 
 if [[ -z "${var_forgejo_runner_token:-}" ]]; then
@@ -40,6 +50,8 @@ fi
 
 export FORGEJO_INSTANCE="$var_forgejo_instance"
 export FORGEJO_RUNNER_TOKEN="$var_forgejo_runner_token"
+export FORGEJO_RUNNER_UUID="$var_forgejo_runner_uuid"
+export RUNNER_LABELS
 
 msg_info "Installing dependencies"
 $STD apt install -y \
@@ -60,14 +72,20 @@ msg_ok "Installed Forgejo Runner"
 
 msg_info "Registering Forgejo Runner"
 export DOCKER_HOST="unix:///run/podman/podman.sock"
-cd /root
-forgejo-runner register \
-  --instance "$FORGEJO_INSTANCE" \
-  --token "$FORGEJO_RUNNER_TOKEN" \
-  --name "$(hostname)" \
-  --labels "$RUNNER_LABELS" \
-  --no-interactive
-msg_ok "Registered Forgejo Runner"
+
+msg_info "Generating Forgejo Runner Configuration"
+mkdir -p /etc/forgejo-runner
+CONFIG_FILE="/etc/forgejo-runner/config.yaml"
+forgejo-runner generate-config > $CONFIG_FILE
+yq -i '
+  .container.docker_host = strenv(DOCKER_HOST) |
+  .server.connections.forgejo.url = strenv(FORGEJO_INSTANCE) |
+  .server.connections.forgejo.uuid = strenv(FORGEJO_RUNNER_UUID) |
+  .server.connections.forgejo.token = strenv(FORGEJO_RUNNER_TOKEN) |
+  .server.connections.forgejo.labels = (strenv(RUNNER_LABELS) | split(",") | map(select(length > 0)))
+  ' $CONFIG_FILE
+msg_ok "Generated Forgejo Runner Configuration"
+
 
 msg_info "Creating Services"
 cat <<EOF >/etc/systemd/system/forgejo-runner.service
@@ -81,7 +99,7 @@ Requires=podman.socket
 User=root
 WorkingDirectory=/root
 Environment=DOCKER_HOST=unix:///run/podman/podman.sock
-ExecStart=/usr/local/bin/forgejo-runner daemon
+ExecStart=/usr/local/bin/forgejo-runner daemon -c $CONFIG_FILE
 Restart=on-failure
 RestartSec=10
 TimeoutSec=0
