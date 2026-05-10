@@ -55,12 +55,6 @@ chmod 700 /home/hermes/.hermes
 git config --system --add safe.directory /home/hermes/.hermes/hermes-agent 2>/dev/null || true
 msg_ok "Installed Hermes Agent"
 
-msg_info "Installing Web Dashboard"
-$STD runuser -u hermes -- \
-  env HOME=/home/hermes VIRTUAL_ENV=/home/hermes/.hermes/hermes-agent/venv \
-  /home/hermes/.local/bin/uv pip install 'hermes-agent[web,pty]'
-msg_ok "Installed Web Dashboard"
-
 msg_info "Configuring API Server"
 API_SERVER_KEY=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | cut -c1-32)
 mkdir -p /home/hermes/.hermes
