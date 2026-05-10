@@ -25,6 +25,14 @@ loginctl enable-linger hermes
 echo 'export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"' >>/home/hermes/.profile
 msg_ok "Created Hermes User"
 
+msg_info "Configuring Service Environment"
+cat <<EOF >/etc/default/hermes
+HOME=/home/hermes
+PATH=/home/hermes/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+NODE_OPTIONS=${NODE_OPTIONS}
+EOF
+msg_ok "Configured Service Environment"
+
 msg_warn "WARNING: This script will run an external installer from a third-party source (https://hermes-agent.nousresearch.com/)."
 msg_warn "The following code is NOT maintained or audited by our repository."
 msg_warn "If you have any doubts or concerns, please review the installer code before proceeding:"
@@ -37,12 +45,15 @@ if [[ ! "$CONFIRM" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 fi
 
 msg_info "Installing Hermes Agent"
-$STD setsid --wait env \
-  HOME=/home/hermes \
-  PATH=/home/hermes/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-  bash <(curl -fsSL https://hermes-agent.nousresearch.com/install.sh) --skip-setup --hermes-home /home/hermes/.hermes --dir /home/hermes/.hermes/hermes-agent
-
+(
+  set -a
+  source /etc/default/hermes
+  set +a
+  $STD bash <(curl -fsSL https://hermes-agent.nousresearch.com/install.sh) --skip-setup --hermes-home /home/hermes/.hermes --dir /home/hermes/.hermes/hermes-agent
+)
 chown -R hermes:hermes /home/hermes
+chmod 750 /home/hermes
+chmod 700 /home/hermes/.hermes
 git config --system --add safe.directory /home/hermes/.hermes/hermes-agent 2>/dev/null || true
 msg_ok "Installed Hermes Agent"
 
@@ -54,21 +65,15 @@ msg_ok "Installed Web Dashboard"
 
 msg_info "Configuring API Server"
 API_SERVER_KEY=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | cut -c1-32)
+mkdir -p /home/hermes/.hermes
 cat <<EOF >/home/hermes/.hermes/.env
 API_SERVER_ENABLED=true
 API_SERVER_HOST=0.0.0.0
 API_SERVER_PORT=8642
 API_SERVER_KEY=${API_SERVER_KEY}
 HERMES_REDACT_SECRETS=true
-HERMES_HOME=/home/hermes/.hermes
-HOME=/home/hermes
-PATH=/home/hermes/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-NODE_OPTIONS=--max-old-space-size=3072
 EOF
 chmod 600 /home/hermes/.hermes/.env
-chown hermes:hermes /home/hermes/.hermes/.env
-chmod 750 /home/hermes
-chmod 700 /home/hermes/.hermes
 msg_ok "Configured API Server"
 
 msg_info "Creating Dashboard Service"
@@ -85,6 +90,7 @@ Group=hermes
 UMask=0077
 WorkingDirectory=/home/hermes
 ExecStart=/home/hermes/.local/bin/hermes dashboard --host 127.0.0.1 --port 9119 --no-open
+EnvironmentFile=/etc/default/hermes
 EnvironmentFile=/home/hermes/.hermes/.env
 Restart=on-failure
 RestartSec=5
