@@ -96,18 +96,16 @@ EOF
 systemctl enable -q --now hermes-dashboard
 msg_ok "Created Dashboard Service"
 
-msg_info "Configuring Login Guidance"
+msg_info "Configuring Login Hints"
 cat <<'HINT' >/etc/profile.d/hermes-hint.sh
 if [[ "$(id -u)" -eq 0 ]]; then
   echo "  Run 'su - hermes' to manage Hermes Agent and profiles."
 fi
 LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-echo "  API Server (OpenAI-compatible): http://${LOCAL_IP}:8642/v1"
-echo "  API key: /home/hermes/.hermes/.env"
 echo "  Dashboard: ssh -fNL 9119:localhost:9119 root@${LOCAL_IP}"
 echo "             then open http://localhost:9119"
 HINT
-msg_ok "Configured Login Guidance"
+msg_ok "Configured Login Hints"
 
 motd_ssh
 customize
