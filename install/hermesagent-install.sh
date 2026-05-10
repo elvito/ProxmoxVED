@@ -59,6 +59,10 @@ API_SERVER_HOST=0.0.0.0
 API_SERVER_PORT=8642
 API_SERVER_KEY=${API_SERVER_KEY}
 HERMES_REDACT_SECRETS=true
+HERMES_HOME=/home/hermes/.hermes
+HOME=/home/hermes
+PATH=/home/hermes/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+NODE_OPTIONS=--max-old-space-size=3072
 EOF
 chmod 600 /home/hermes/.hermes/.env
 chown hermes:hermes /home/hermes/.hermes/.env
@@ -80,10 +84,7 @@ Group=hermes
 UMask=0077
 WorkingDirectory=/home/hermes
 ExecStart=/home/hermes/.local/bin/hermes dashboard --host 127.0.0.1 --port 9119 --no-open
-Environment="HERMES_HOME=/home/hermes/.hermes"
-Environment="HOME=/home/hermes"
-Environment="PATH=/home/hermes/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-Environment="NODE_OPTIONS=--max-old-space-size=3072"
+EnvironmentFile=/home/hermes/.hermes/.env
 Restart=on-failure
 RestartSec=5
 ProtectProc=invisible
