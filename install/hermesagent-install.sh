@@ -22,6 +22,7 @@ NODE_VERSION="22" setup_nodejs
 msg_info "Creating Hermes User"
 useradd -m -s /bin/bash hermes
 loginctl enable-linger hermes
+echo 'export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"' >>/home/hermes/.profile
 msg_ok "Created Hermes User"
 
 msg_warn "WARNING: This script will run an external installer from a third-party source (https://hermes-agent.nousresearch.com/)."
