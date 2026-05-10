@@ -104,7 +104,6 @@ cp -r _build/prod/rel/pinchflat /opt/pinchflat/app
 msg_ok "Built Pinchflat"
 
 msg_info "Creating Service"
-
 cat <<EOF >/etc/systemd/system/pinchflat.service
 [Unit]
 Description=Pinchflat
