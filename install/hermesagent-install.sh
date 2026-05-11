@@ -66,6 +66,12 @@ API_SERVER_KEY=${API_SERVER_KEY}
 HERMES_REDACT_SECRETS=true
 EOF
 chmod 600 /home/hermes/.hermes/.env
+cat <<EOF >/home/hermes/.hermes/config.yaml
+security:
+  redact_secrets: true
+EOF
+chmod 600 /home/hermes/.hermes/config.yaml
+chown hermes:hermes /home/hermes/.hermes/config.yaml
 msg_ok "Configured API Server"
 
 msg_info "Creating Dashboard Service"
