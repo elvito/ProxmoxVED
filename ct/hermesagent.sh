@@ -65,9 +65,8 @@ description
 
 msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Connect via SSH and configure your LLM provider:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}ssh root@${IP}${CL}"
+echo -e "${INFO}${YW} Configure your model provider and gateway server inside the container:${CL}"
 echo -e "${TAB}${BGN}su - hermes${CL}"
 echo -e "${TAB}${BGN}hermes setup${CL}"
-echo -e "${INFO}${YW} API key stored in:${CL}"
+echo -e "${INFO}${YW} Key for Hermes API Server stored in:${CL}"
 echo -e "${TAB}${BGN}/home/hermes/.hermes/.env${CL}"

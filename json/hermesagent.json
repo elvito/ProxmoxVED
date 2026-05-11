@@ -8,7 +8,7 @@
     "type": "ct",
     "updateable": true,
     "privileged": false,
-    "interface_port": 8642,
+    "interface_port": null,
     "documentation": "https://hermes-agent.nousresearch.com/docs",
     "website": "https://hermes-agent.nousresearch.com",
     "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/hermes.webp",
@@ -41,7 +41,7 @@
             "type": "warning"
         },
         {
-            "text": "After container startup, SSH in as root and run 'hermes setup' to configure your LLM provider (OpenRouter, Anthropic, OpenAI, Nous Portal, or custom endpoint).",
+            "text": "After container startup, login, switch to the hermes user (su - hermes) and run 'hermes setup' to configure your model provider and gateway server.",
             "type": "info"
         },
         {

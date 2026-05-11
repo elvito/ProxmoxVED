@@ -97,11 +97,8 @@ msg_ok "Created Dashboard Service"
 msg_info "Configuring Login Hints"
 cat <<'HINT' >/etc/profile.d/hermes-hint.sh
 if [[ "$(id -u)" -eq 0 ]]; then
-  echo "  Run 'su - hermes' to manage Hermes Agent and profiles."
+  echo "  Use 'su - hermes' to switch to the hermes user for running Hermes Agent."
 fi
-LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-echo "  Dashboard: ssh -fNL 9119:localhost:9119 root@${LOCAL_IP}"
-echo "             then open http://localhost:9119"
 HINT
 msg_ok "Configured Login Hints"
 
