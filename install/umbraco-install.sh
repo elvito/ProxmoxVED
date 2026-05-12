@@ -71,8 +71,8 @@ map \$http_connection \$connection_upgrade {
 server {
   listen 443 ssl default_server;
   listen [::]:443 ssl default_server;
-  ssl_certificate /etc/ssl/umbraco.crt;
-  ssl_certificate_key /etc/ssl/umbraco.key;
+  ssl_certificate /etc/ssl/umbraco/umbraco.crt;
+  ssl_certificate_key /etc/ssl/umbraco/umbraco.key;
   location / {
       proxy_pass         https://127.0.0.1:7000/;
       proxy_http_version 1.1;
@@ -90,7 +90,7 @@ server {
 }
 EOF
 create_self_signed_cert
-systemctl reload nginx
+#systemctl reload nginx
 msg_ok "Nginx Server created"
 
 msg_info "Creating Kestrel Umbraco Service"
