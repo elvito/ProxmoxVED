@@ -16,7 +16,6 @@ update_os
 var_project_name="cms"
 
 msg_info "Installing Dependencies"
-$STD apt-get update
 $STD apt-get install -y \
   ca-certificates \
   uuid-runtime \
@@ -25,12 +24,12 @@ $STD apt-get install -y \
 msg_ok "Installed Dependencies"
 
 msg_info "Installing .NET SDK 10.0"
-wget https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-sudo dpkg -i packages-microsoft-prod.deb
-rm packages-microsoft-prod.deb
+$STD wget https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+$STD dpkg -i packages-microsoft-prod.deb
+$STD rm packages-microsoft-prod.deb
 
-sudo apt-get update && \
-  sudo apt-get install -y dotnet-sdk-10.0
+$STD apt-get update && \
+  $STD apt-get install -y dotnet-sdk-10.0
 msg_ok "Installed .NET SDK 10.0"
 
 msg_info "Installing dotnet Umbraco templates and create project (Patience)"
