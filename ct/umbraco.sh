@@ -8,7 +8,7 @@ source <(curl -fsSL https://raw.githubusercontent.com/montagneid/ProxmoxVED/main
 APP="Umbraco"
 var_tags="${var_tags:-website}"
 var_cpu="${var_cpu:-2}"
-var_ram="${var_ram:-500}"
+var_ram="${var_ram:-512}"
 var_disk="${var_disk:-8}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"

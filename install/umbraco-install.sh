@@ -71,8 +71,8 @@ map \$http_connection \$connection_upgrade {
 server {
   listen 443 ssl default_server;
   listen [::]:443 ssl default_server;
-  ssl_certificate /etc/nginx/certificate/nginx-certificate.crt;
-  ssl_certificate_key /etc/nginx/certificate/nginx.key;
+  ssl_certificate /etc/ssl/umbraco.crt;
+  ssl_certificate_key /etc/ssl/umbraco.key;
   location / {
       proxy_pass         https://127.0.0.1:7000/;
       proxy_http_version 1.1;
@@ -89,10 +89,7 @@ server {
   }
 }
 EOF
-create_self_signed_cert "Nginxkey"
-TLS_DIR="/etc/nginx/certificate"
-TLS_CERT="$TLS_DIR/nginx-certificate.crt"
-TLS_KEY="$TLS_DIR/nginx.key"
+create_self_signed_cert
 systemctl reload nginx
 msg_ok "Nginx Server created"
 
