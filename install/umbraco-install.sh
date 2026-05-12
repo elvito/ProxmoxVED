@@ -90,7 +90,7 @@ server {
 }
 EOF
 create_self_signed_cert
-#systemctl reload nginx
+systemctl reload nginx
 msg_ok "Nginx Server created"
 
 msg_info "Creating Kestrel Umbraco Service"
