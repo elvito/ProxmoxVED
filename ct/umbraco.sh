@@ -32,10 +32,6 @@ function update_script() {
     $STD apt -y upgrade
     msg_ok "Updated ${APP} LXC"
 
-    msg_info "Updating .NET SDK"
-    $STD apt install -y dotnet-sdk-10.0
-    msg_ok "Updated .NET SDK"
-
     msg_info "Updating Umbraco Templates"
     $STD dotnet new update
     msg_ok "Updated Umbraco Templates"
