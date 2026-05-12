@@ -89,7 +89,10 @@ server {
   }
 }
 EOF
-create_self_signed_certificate "/etc/nginx/certificate" "nginx-certificate.crt" "nginx.key" "localhost"
+create_self_signed_cert "Nginxkey"
+TLS_DIR="/etc/nginx/certificate"
+TLS_CERT="$TLS_DIR/nginx-certificate.crt"
+TLS_KEY="$TLS_DIR/nginx.key"
 systemctl reload nginx
 msg_ok "Nginx Server created"
 
