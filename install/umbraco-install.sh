@@ -24,7 +24,13 @@ $STD apt install -y \
 msg_ok "Installed Dependencies"
 
 msg_info "Installing .NET SDK 10.0"
-setup_deb822 "microsoft" "https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb"
+setup_deb822_repo \
+  "microsoft-prod" \
+  "https://packages.microsoft.com/keys/microsoft.asc" \
+  "https://packages.microsoft.com/debian/13/prod" \
+  "bookworm" \
+  "main"
+$STD apt update
 $STD apt install -y dotnet-sdk-10.0
 msg_ok "Installed .NET SDK 10.0"
 
