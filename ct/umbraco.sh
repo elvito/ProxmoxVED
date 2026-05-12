@@ -39,8 +39,6 @@ function update_script() {
     msg_info "Updating Umbraco Templates"
     $STD dotnet new update
     msg_ok "Updated Umbraco Templates"
-
-    msg_ok "Update completed successfully!"
     exit
 }
 

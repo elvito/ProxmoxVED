@@ -16,7 +16,7 @@ update_os
 var_project_name="cms"
 
 msg_info "Installing Dependencies"
-$STD apt-get install -y \
+$STD apt install -y \
   ca-certificates \
   uuid-runtime \
   nginx \
@@ -24,12 +24,8 @@ $STD apt-get install -y \
 msg_ok "Installed Dependencies"
 
 msg_info "Installing .NET SDK 10.0"
-$STD wget https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-$STD dpkg -i packages-microsoft-prod.deb
-$STD rm packages-microsoft-prod.deb
-
-$STD apt-get update && \
-  $STD apt-get install -y dotnet-sdk-10.0
+setup_deb822 "microsoft" "https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb"
+$STD apt install -y dotnet-sdk-10.0
 msg_ok "Installed .NET SDK 10.0"
 
 msg_info "Installing dotnet Umbraco templates and create project (Patience)"
@@ -41,7 +37,6 @@ msg_ok "Umbraco templates installed and project created"
 msg_info "Configuring database connection and unattended setup"
 cd /var/www/html/$var_project_name
 UMBRACO_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
-
 jq --arg umbracopass "$UMBRACO_PASS" '. + {
   "ConnectionStrings": {
     "umbracoDbDSN": "Data Source=|DataDirectory|/Umbraco.sqlite.db;Cache=Shared;Foreign Keys=True;Pooling=True",
@@ -64,7 +59,6 @@ msg_ok "Database connection and unattended setup configured"
 
 msg_info "Setting up Nginx Server"
 rm -f /var/www/html/index.nginx-debian.html
-
 cat <<EOF >/etc/nginx/sites-available/default
 map \$http_connection \$connection_upgrade {
   "~*Upgrade" \$http_connection;
@@ -91,11 +85,7 @@ server {
   }
 }
 EOF
-
-mkdir /etc/nginx/certificate
-cd /etc/nginx/certificate
-openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 -nodes -out nginx-certificate.crt -keyout nginx.key -subj "/C=NL/ST=State/L=City/O=Organization/CN=localhost" &>/dev/null
-
+create_self_signed_certificate "/etc/nginx/certificate" "nginx-certificate.crt" "nginx.key" "localhost"
 systemctl reload nginx
 msg_ok "Nginx Server created"
 
@@ -151,12 +141,9 @@ mkdir -p /var/www/html
 usermod -d /var/www/html ftp
 usermod -d /var/www/html ftpuser
 chown -R ftpuser:ftpuser /var/www/html
-
 sed -i "s|#write_enable=YES|write_enable=YES|g" /etc/vsftpd.conf
 sed -i "s|#chroot_local_user=YES|chroot_local_user=NO|g" /etc/vsftpd.conf
-
 systemctl restart -q vsftpd.service
-
 {
   echo "FTP Credentials"
   echo "Username: ftpuser"
@@ -169,7 +156,6 @@ PROJECT_GUID=$(uuidgen | tr '[:upper:]' '[:lower:]')
 CONTAINER_IP=$(hostname -I | awk '{print $1}')
 PUBLISH_PROFILE_DIR="/var/www/html/${var_project_name}/Properties/PublishProfiles"
 mkdir -p "$PUBLISH_PROFILE_DIR"
-
 cat >"$PUBLISH_PROFILE_DIR/FTPProfile.pubxml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
