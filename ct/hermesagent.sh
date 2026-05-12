@@ -25,7 +25,7 @@ function update_script() {
   check_container_resources
 
   if [[ ! -x /home/hermes/.local/bin/hermes ]]; then
-    msg_error "No ${APP} Installation Found!"
+    msg_error "No Hermes Agent Installation Found!"
     exit
   fi
 
@@ -44,13 +44,13 @@ function update_script() {
   systemctl stop hermes-dashboard
   msg_ok "Stopped Services"
 
-  msg_info "Updating ${APP}"
+  msg_info "Updating Hermes Agent"
   $STD setsid --wait bash -c '
     set -a; source /etc/default/hermes; set +a
     /home/hermes/.local/bin/hermes update --yes
   '
   chown -R hermes:hermes /home/hermes
-  msg_ok "Updated ${APP}"
+  msg_ok "Updated Hermes Agent"
 
   msg_info "Starting Services"
   systemctl start hermes-dashboard
@@ -64,7 +64,7 @@ build_container
 description
 
 msg_ok "Completed successfully!\n"
-echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
+echo -e "${CREATING}${GN}Hermes Agent setup has been successfully initialized!${CL}"
 echo -e "${INFO}${YW} Configure your model provider and gateway server inside the container:${CL}"
 echo -e "${TAB}${BGN}su - hermes${CL}"
 echo -e "${TAB}${BGN}hermes setup${CL}"
