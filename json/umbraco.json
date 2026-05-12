@@ -20,7 +20,7 @@
             "script": "ct/umbraco.sh",
             "resources": {
                 "cpu": 2,
-                "ram": 500,
+                "ram": 512,
                 "hdd": 8,
                 "os": "Debian",
                 "version": "13"
