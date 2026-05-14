@@ -122,7 +122,6 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
-
 systemctl enable -q --now pinchflat
 msg_ok "Created Service"
 
