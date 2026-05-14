@@ -58,7 +58,6 @@ fetch_and_deploy_gh_release "pinchflat" "kieraneglin/pinchflat" "tarball" "lates
 msg_info "Configuring Pinchflat"
 CONFIG_PATH="/opt/pinchflat/config"
 DOWNLOADS_PATH="/opt/pinchflat/downloads"
-
 mkdir -p \
   /etc/elixir_tzdata_data \
   /etc/yt-dlp/plugins \
