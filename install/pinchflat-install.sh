@@ -48,11 +48,6 @@ export PIPX_BIN_DIR=/usr/local/bin
 $STD pipx install apprise
 msg_ok "Installed Apprise"
 
-msg_info "Setting Locale"
-sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen
-$STD locale-gen
-msg_ok "Set Locale"
-
 fetch_and_deploy_gh_release "pinchflat" "kieraneglin/pinchflat" "tarball" "latest" "/opt/pinchflat-src"
 
 msg_info "Configuring Pinchflat"

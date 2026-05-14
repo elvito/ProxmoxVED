@@ -33,7 +33,7 @@
   },
   "notes": [
     {
-      "text": "For large media libraries, mount external storage at `/opt/pinchflat/downloads` before downloading media to avoid filling the LXC disk.",
+      "text": "For large media libraries, increase disk space or mount external storage at `/opt/pinchflat/downloads` before downloading media to avoid filling the LXC disk.",
       "type": "warning"
     },
     {
