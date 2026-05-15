@@ -68,5 +68,5 @@ echo -e "${CREATING}${GN}Hermes Agent setup has been successfully initialized!${
 echo -e "${INFO}${YW} Configure your model provider and gateway server inside the container:${CL}"
 echo -e "${TAB}${BGN}su - hermes${CL}"
 echo -e "${TAB}${BGN}hermes setup${CL}"
-echo -e "${INFO}${YW} Key for Hermes API Server stored in:${CL}"
+echo -e "${INFO}${YW}Key for Hermes API Server stored in:${CL}"
 echo -e "${TAB}${BGN}/home/hermes/.hermes/.env${CL}"
