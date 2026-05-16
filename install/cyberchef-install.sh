@@ -18,7 +18,6 @@ $STD apt install -y caddy
 msg_ok "Installed Dependencies"
 
 NODE_VERSION="24" setup_nodejs
-
 fetch_and_deploy_gh_release "cyberchef" "gchq/CyberChef" "tarball"
 
 msg_info "Building CyberChef (Patience)"
