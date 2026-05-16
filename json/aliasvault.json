@@ -7,7 +7,7 @@
     "date_created": "2026-05-16",
     "type": "ct",
     "updateable": true,
-    "privileged": true,
+    "privileged": false,
     "interface_port": 443,
     "documentation": "https://docs.aliasvault.net/",
     "website": "https://aliasvault.net/",
@@ -19,9 +19,9 @@
             "script": "ct/aliasvault.sh",
             "config_path": "/opt/aliasvault/.env",
             "resources": {
-                "cpu": 2,
-                "ram": 2048,
-                "hdd": 16,
+                "cpu": 4,
+                "ram": 4096,
+                "hdd": 20,
                 "os": "Debian",
                 "version": "12"
             }
@@ -33,8 +33,8 @@
     },
     "notes": [
         {
-            "text": "A privileged LXC container is required because AliasVault runs via Docker Compose internally.",
-            "type": "info"
+            "text": "The initial installation builds AliasVault from source and takes 15–30 minutes. Do not interrupt the process.",
+            "type": "warning"
         },
         {
             "text": "The admin password is auto-generated during installation and displayed in the installation output. Save it immediately.",
