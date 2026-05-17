@@ -20,7 +20,7 @@ $STD apt install -y \
   libsqlite3-dev
 msg_ok "Installed Dependencies"
 
-NODE_VERSION="22" setup_nodejs
+NODE_VERSION="24" setup_nodejs
 
 msg_info "Enabling pnpm via corepack"
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -69,7 +69,7 @@ User=etherpad
 Group=etherpad
 WorkingDirectory=/opt/etherpad-lite
 Environment=NODE_ENV=production
-ExecStart=/usr/bin/env pnpm run prod
+ExecStart=/usr/bin/pnpm run prod
 Restart=always
 RestartSec=5
 LimitNOFILE=65536
