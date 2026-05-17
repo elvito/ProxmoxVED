@@ -31,7 +31,7 @@ msg_info "Creating etherpad User"
 useradd --system --create-home --home-dir /var/lib/etherpad --shell /usr/sbin/nologin etherpad
 msg_ok "Created etherpad User"
 
-fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad" "tarball" "latest" "/opt/etherpad-lite"
+fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad" "tarball"
 
 msg_info "Building Etherpad"
 cd /opt/etherpad-lite
