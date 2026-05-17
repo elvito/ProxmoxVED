@@ -41,6 +41,7 @@ msg_info "Building Application"
 cd /opt/spliit
 set -a && source /opt/spliit/.env && set +a
 $STD npm install
+$STD npm install deepmerge
 $STD npm run build
 msg_ok "Built Application"
 
