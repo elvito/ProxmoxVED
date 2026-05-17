@@ -39,11 +39,15 @@ msg_ok "Configured Application"
 
 msg_info "Building Application"
 cd /opt/spliit
-set -a && source /opt/spliit/.env && set +a
-$STD npm install
-$STD npm install deepmerge
+$STD npm ci --ignore-scripts
+$STD npx prisma generate
 $STD npm run build
 msg_ok "Built Application"
+
+msg_info "Running Database Migrations"
+cd /opt/spliit
+$STD npx prisma migrate deploy
+msg_ok "Ran Database Migrations"
 
 msg_info "Creating Service"
 cat <<EOF >/etc/systemd/system/spliit.service
