@@ -13,7 +13,7 @@ setting_up_container
 network_check
 update_os
 
-NODE_VERSION=22 NODE_MODULE="pnpm@10" setup_nodejs
+NODE_VERSION=24 NODE_MODULE="pnpm" setup_nodejs
 fetch_and_deploy_gh_release "etherpad" "ether/etherpad" "binary"
 
 msg_info "Configuring Etherpad"
