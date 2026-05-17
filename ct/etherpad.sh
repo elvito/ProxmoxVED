@@ -36,12 +36,14 @@ function update_script() {
 
     msg_info "Backing up configuration"
     cp /opt/etherpad/settings.json /opt/
+    cp -r /opt/etherpad/src/plugin_packages /opt/plugin_packages_bak
     msg_ok "Backed up configuration"
 
     fetch_and_deploy_gh_release "etherpad" "ether/etherpad" "binary"
 
     msg_info "Restoring configuration"
     mv /opt/settings.json /opt/etherpad/
+    mv /opt/plugin_packages_bak /opt/etherpad/src/plugin_packages
     msg_ok "Restored configuration"
 
     msg_info "Starting Service"
