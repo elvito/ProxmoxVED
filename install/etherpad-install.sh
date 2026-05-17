@@ -28,7 +28,8 @@ $STD corepack enable
 msg_ok "Enabled pnpm"
 
 msg_info "Creating etherpad User"
-useradd --system --create-home --home-dir /var/lib/etherpad --shell /usr/sbin/nologin etherpad
+addgroup --system etherpad
+useradd --system --create-home --home-dir /var/lib/etherpad --shell /usr/sbin/nologin etherpad -g etherpad
 msg_ok "Created etherpad User"
 
 fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad" "tarball"
