@@ -17,11 +17,14 @@ msg_info "Installing Dependencies"
 $STD apt install -y \
   nginx \
   python3 \
+  build-essential \
   gettext-base \
   inotify-tools \
   libkrb5-3 \
   libgssapi-krb5-2 \
   openssl
+# Ensure cc linker is available — update-alternatives may not run in minimal LXC
+[[ ! -e /usr/bin/cc ]] && ln -sf /usr/bin/gcc /usr/local/bin/cc
 msg_ok "Installed Dependencies"
 
 setup_rust
