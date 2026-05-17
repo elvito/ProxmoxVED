@@ -24,16 +24,18 @@ $STD apt install -y \
   openssl
 msg_ok "Installed Dependencies"
 
-RUST_CRATES="wasm-pack" setup_rust
+setup_rust
+fetch_and_deploy_gh_release "wasm-pack" "rustwasm/wasm-pack" "prebuild" "latest" "/usr/local/bin" "wasm-pack-v*-x86_64-unknown-linux-musl.tar.gz"
 
 NODE_VERSION="20" setup_nodejs
 
 msg_info "Installing .NET SDK 10.0"
-curl -fsSL "https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb" \
-  -o /tmp/packages-microsoft-prod.deb
-$STD dpkg -i /tmp/packages-microsoft-prod.deb
-rm -f /tmp/packages-microsoft-prod.deb
-$STD apt update
+setup_deb822_repo "microsoft-prod" \
+  "https://packages.microsoft.com/keys/microsoft.asc" \
+  "https://packages.microsoft.com/debian/12/prod" \
+  "bookworm" \
+  "main" \
+  "amd64"
 $STD apt install -y dotnet-sdk-10.0
 msg_ok "Installed .NET SDK 10.0"
 
