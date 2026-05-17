@@ -31,7 +31,7 @@ msg_info "Creating etherpad User"
 useradd --system --create-home --home-dir /var/lib/etherpad --shell /usr/sbin/nologin etherpad
 msg_ok "Created etherpad User"
 
-fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad-lite" "tarball" "latest" "/opt/etherpad-lite"
+fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad" "tarball" "latest" "/opt/etherpad-lite"
 
 msg_info "Building Etherpad"
 cd /opt/etherpad-lite
@@ -41,7 +41,18 @@ msg_ok "Built Etherpad"
 
 msg_info "Configuring Etherpad"
 cp /opt/etherpad-lite/settings.json.template /opt/etherpad-lite/settings.json
-sed -i 's#"ip": *"127.0.0.1"#"ip": "0.0.0.0"#' /opt/etherpad-lite/settings.json
+# Switch dbType from the upstream template's dev-only "dirty" default to
+# sqlite (ACID, single-file) backed by a file in the etherpad user's
+# state directory. Matches the same default across our snap, .deb, and
+# Home Assistant add-on packagings. Admins who need postgres or mysql
+# can edit settings.json and switch dbType + dbSettings; ueberdb
+# supports both backends via the same code path.
+install -d -o etherpad -g etherpad -m 0750 /var/lib/etherpad
+sed -i \
+  -e 's#"ip": *"127.0.0.1"#"ip": "0.0.0.0"#' \
+  -e 's#"dbType" *: *"dirty"#"dbType": "sqlite"#' \
+  -e 's#"filename" *: *"var/dirty.db"#"filename": "/var/lib/etherpad/etherpad.db"#' \
+  /opt/etherpad-lite/settings.json
 chown -R etherpad:etherpad /opt/etherpad-lite
 msg_ok "Configured Etherpad"
 

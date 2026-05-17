@@ -29,7 +29,7 @@ function update_script() {
     exit
   fi
 
-  if check_for_gh_release "etherpad-lite" "ether/etherpad-lite"; then
+  if check_for_gh_release "etherpad-lite" "ether/etherpad"; then
     msg_info "Stopping Service"
     systemctl stop etherpad
     msg_ok "Stopped Service"
@@ -39,7 +39,7 @@ function update_script() {
     [ -d /opt/etherpad-lite/var ] && cp -a /opt/etherpad-lite/var /opt/etherpad-var.bak
     msg_ok "Backed up Configuration"
 
-    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad-lite" "tarball" "latest" "/opt/etherpad-lite"
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad" "tarball" "latest" "/opt/etherpad-lite"
 
     msg_info "Rebuilding Etherpad"
     cd /opt/etherpad-lite

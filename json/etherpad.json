@@ -33,7 +33,7 @@
   },
   "notes": [
     {
-      "text": "The default install uses the built-in DirtyDB store, intended for evaluation only. For production, edit /opt/etherpad-lite/settings.json and switch the 'dbType' to mysql or postgres.",
+      "text": "The default install uses an embedded sqlite database at /var/lib/etherpad/etherpad.db — ACID, zero-config, suitable for single-instance homelab use. To use postgres or mysql instead, edit /opt/etherpad-lite/settings.json and switch 'dbType' + 'dbSettings' (Etherpad's ueberdb abstraction supports both).",
       "type": "info"
     },
     {
