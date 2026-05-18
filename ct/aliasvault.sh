@@ -9,9 +9,9 @@ APP="AliasVault"
 var_tags="${var_tags:-security;passwords;privacy}"
 var_cpu="${var_cpu:-4}"
 var_ram="${var_ram:-6144}"
-var_disk="${var_disk:-12}"
+var_disk="${var_disk:-30}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-13}"
+var_version="${var_version:-12}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -76,6 +76,9 @@ function update_script() {
 import json, pathlib
 p = pathlib.Path('/opt/aliasvault/client/wwwroot/appsettings.json')
 c = json.loads(p.read_text()); c['ApiUrl'] = ''; p.write_text(json.dumps(c, indent=2))
+for ext in ['.gz', '.br']:
+    q = pathlib.Path(str(p) + ext)
+    if q.exists(): q.unlink()
 "
     mkdir -p /opt/certificates/app
     $STD dotnet publish AliasVault.Admin/AliasVault.Admin.csproj -c Release -o /opt/aliasvault/admin --no-restore
