@@ -65,7 +65,7 @@ $STD php bin/console doctrine:migrations:migrate --no-interaction --em=read_mode
 $STD php bin/console doctrine:migrations:migrate --no-interaction --configuration=config/migrations/event_store.yaml
 systemctl start redis-server
 $STD php bin/console messenger:setup-transports --no-interaction
-$STD php bin/console slink:admin:init --no-interaction
+# $STD php bin/console slink:admin:init --no-interaction
 $STD php bin/console cache:warm --no-optional-warmers
 msg_ok "Set up API"
 
