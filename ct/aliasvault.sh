@@ -72,6 +72,12 @@ function update_script() {
     $STD dotnet publish AliasVault.Api/AliasVault.Api.csproj -c Release -o /opt/aliasvault/api --no-restore
     $STD dotnet build AliasVault.Client/AliasVault.Client.csproj -c Release --no-restore
     $STD dotnet publish AliasVault.Client/AliasVault.Client.csproj -c Release -o /opt/aliasvault/client --no-restore
+    python3 -c "
+import json, pathlib
+p = pathlib.Path('/opt/aliasvault/client/wwwroot/appsettings.json')
+c = json.loads(p.read_text()); c['ApiUrl'] = ''; p.write_text(json.dumps(c, indent=2))
+"
+    mkdir -p /opt/certificates/app
     $STD dotnet publish AliasVault.Admin/AliasVault.Admin.csproj -c Release -o /opt/aliasvault/admin --no-restore
     $STD dotnet publish Services/AliasVault.SmtpService/AliasVault.SmtpService.csproj -c Release -o /opt/aliasvault/smtp --no-restore
     $STD dotnet publish Services/AliasVault.TaskRunner/AliasVault.TaskRunner.csproj -c Release -o /opt/aliasvault/taskrunner --no-restore
