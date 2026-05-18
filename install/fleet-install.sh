@@ -13,8 +13,15 @@ setting_up_container
 network_check
 update_os
 
-setup_mariadb
-MARIADB_DB_NAME="fleet" MARIADB_DB_USER="fleet" setup_mariadb_db
+setup_mysql
+
+msg_info "Setting up MySQL Database"
+DB_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
+mysql -uroot -e "CREATE DATABASE IF NOT EXISTS fleet CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -uroot -e "CREATE USER IF NOT EXISTS 'fleet'@'localhost' IDENTIFIED BY '${DB_PASS}';"
+mysql -uroot -e "GRANT ALL PRIVILEGES ON fleet.* TO 'fleet'@'localhost';"
+mysql -uroot -e "FLUSH PRIVILEGES;"
+msg_ok "Set up MySQL Database"
 
 msg_info "Installing Dependencies"
 $STD apt install -y redis-server
@@ -27,9 +34,9 @@ chmod +x /opt/fleet/fleet
 PRIVATE_KEY=$(openssl rand -hex 32)
 cat <<EOF >/opt/fleet/.env
 FLEET_MYSQL_ADDRESS=127.0.0.1:3306
-FLEET_MYSQL_DATABASE=${MARIADB_DB_NAME}
-FLEET_MYSQL_USERNAME=${MARIADB_DB_USER}
-FLEET_MYSQL_PASSWORD=${MARIADB_DB_PASS}
+FLEET_MYSQL_DATABASE=fleet
+FLEET_MYSQL_USERNAME=fleet
+FLEET_MYSQL_PASSWORD=${DB_PASS}
 FLEET_SERVER_ADDRESS=0.0.0.0:8080
 FLEET_SERVER_TLS=false
 FLEET_SERVER_PRIVATE_KEY=${PRIVATE_KEY}
@@ -47,8 +54,8 @@ msg_info "Creating Service"
 cat <<EOF >/etc/systemd/system/fleet.service
 [Unit]
 Description=Fleet
-After=network.target mariadb.service redis-server.service
-Requires=mariadb.service redis-server.service
+After=network.target mysql.service redis-server.service
+Requires=mysql.service redis-server.service
 
 [Service]
 Type=simple
