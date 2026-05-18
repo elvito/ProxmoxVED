@@ -173,6 +173,11 @@ server {
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
 
+    # .mjs files must be served as text/javascript for dynamic import() to work
+    types {
+        application/javascript mjs;
+    }
+
     gzip on;
     gzip_vary on;
     gzip_proxied any;
