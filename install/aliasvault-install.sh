@@ -79,6 +79,12 @@ $STD dotnet build AliasVault.Client/AliasVault.Client.csproj \
   -c Release --no-restore
 $STD dotnet publish AliasVault.Client/AliasVault.Client.csproj \
   -c Release -o /opt/aliasvault/client --no-restore
+# Clear the hardcoded localhost:5092 API URL so the client uses its own origin + /api/
+python3 -c "
+import json, pathlib
+p = pathlib.Path('/opt/aliasvault/client/wwwroot/appsettings.json')
+c = json.loads(p.read_text()); c['ApiUrl'] = ''; p.write_text(json.dumps(c, indent=2))
+"
 $STD dotnet publish AliasVault.Admin/AliasVault.Admin.csproj \
   -c Release -o /opt/aliasvault/admin --no-restore
 $STD dotnet publish Services/AliasVault.SmtpService/AliasVault.SmtpService.csproj \
@@ -130,6 +136,11 @@ msg_ok "Generated SSL Certificate"
 msg_info "Configuring Nginx"
 rm -f /etc/nginx/sites-enabled/default
 cat <<'NGINXEOF' >/etc/nginx/sites-available/aliasvault
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 upstream aliasvault_api   { server 127.0.0.1:3001 max_fails=1 fail_timeout=5s; }
 upstream aliasvault_admin { server 127.0.0.1:3002 max_fails=1 fail_timeout=5s; }
 
@@ -186,7 +197,7 @@ server {
         proxy_set_header X-Forwarded-Prefix  /admin/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade    $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection $connection_upgrade;
         proxy_read_timeout 86400;
         proxy_intercept_errors on;
         error_page 502 503 504 =503 @unavailable;
@@ -236,7 +247,7 @@ cat <<EOF >/etc/systemd/system/aliasvault-admin.service
 [Unit]
 Description=AliasVault Admin
 After=network.target aliasvault-api.service
-Requires=aliasvault-api.service
+Wants=aliasvault-api.service
 
 [Service]
 Type=simple
@@ -248,6 +259,7 @@ Environment=ASPNETCORE_PATHBASE=/admin
 ExecStart=/usr/bin/dotnet AliasVault.Admin.dll
 Restart=on-failure
 RestartSec=5
+StartLimitIntervalSec=0
 
 [Install]
 WantedBy=multi-user.target
