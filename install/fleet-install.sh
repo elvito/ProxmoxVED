@@ -66,6 +66,31 @@ EOF
 systemctl enable -q --now fleet redis-server
 msg_ok "Created Service"
 
+msg_info "Initializing Fleet"
+FLEET_ADMIN_EMAIL="admin@fleet.local"
+FLEET_ADMIN_PASS="$(openssl rand -hex 8)1!"
+ELAPSED=0
+until curl -sf "http://127.0.0.1:8080/healthz" >/dev/null 2>&1; do
+  sleep 2
+  ELAPSED=$((ELAPSED + 2))
+  [[ $ELAPSED -ge 60 ]] && break
+done
+SETUP_RESPONSE=$(curl -s -X POST "http://127.0.0.1:8080/api/latest/fleet/setup" \
+  -H "Content-Type: application/json" \
+  -d "{\"admin\":{\"admin\":true,\"email\":\"${FLEET_ADMIN_EMAIL}\",\"name\":\"Admin\",\"password\":\"${FLEET_ADMIN_PASS}\"},\"org_info\":{\"org_name\":\"Fleet\",\"org_logo_url\":\"\"},\"server_url\":\"http://127.0.0.1:8080\"}")
+FLEET_TOKEN=$(echo "${SETUP_RESPONSE}" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+if [[ -n "${FLEET_TOKEN}" ]]; then
+  curl -s -X PATCH "http://127.0.0.1:8080/api/latest/fleet/config" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${FLEET_TOKEN}" \
+    -d "{\"server_settings\":{\"server_url\":\"http://${LOCAL_IP}:8080\"}}" >/dev/null
+fi
+cat <<EOF >>/opt/fleet/.env
+FLEET_ADMIN_EMAIL=${FLEET_ADMIN_EMAIL}
+FLEET_ADMIN_PASSWORD=${FLEET_ADMIN_PASS}
+EOF
+msg_ok "Initialized Fleet"
+
 motd_ssh
 customize
 cleanup_lxc
