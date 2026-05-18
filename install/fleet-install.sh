@@ -75,7 +75,7 @@ until curl -sf "http://127.0.0.1:8080/healthz" >/dev/null 2>&1; do
   ELAPSED=$((ELAPSED + 2))
   [[ $ELAPSED -ge 60 ]] && break
 done
-SETUP_RESPONSE=$(curl -s -X POST "http://127.0.0.1:8080/api/latest/fleet/setup" \
+SETUP_RESPONSE=$(curl -s -X POST "http://127.0.0.1:8080/api/v1/setup" \
   -H "Content-Type: application/json" \
   -d "{\"admin\":{\"admin\":true,\"email\":\"${FLEET_ADMIN_EMAIL}\",\"name\":\"Admin\",\"password\":\"${FLEET_ADMIN_PASS}\"},\"org_info\":{\"org_name\":\"Fleet\",\"org_logo_url\":\"\"},\"server_url\":\"http://127.0.0.1:8080\"}")
 FLEET_TOKEN=$(echo "${SETUP_RESPONSE}" | grep -o '"token":"[^"]*"' | cut -d'"' -f4) || true
