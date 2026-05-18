@@ -6379,6 +6379,77 @@ EOF
 }
 
 # ------------------------------------------------------------------------------
+# Creates MySQL database with user, charset and optional extra grants
+#
+# Description:
+#   - Generates password if empty
+#   - Creates database with utf8mb4_unicode_ci
+#   - Creates local user with password
+#   - Grants full access to this DB
+#   - Optional: apply extra GRANT statements (comma-separated)
+#   - Saves credentials to file
+#   - Exports variables for use in calling script
+#
+# Usage:
+#   MYSQL_DB_NAME="myapp_db" MYSQL_DB_USER="myapp_user" setup_mysql_db
+#   MYSQL_DB_NAME="fleet" MYSQL_DB_USER="fleet" setup_mysql_db
+#
+# Variables:
+#   MYSQL_DB_NAME         - Database name (required)
+#   MYSQL_DB_USER         - Database user (required)
+#   MYSQL_DB_PASS         - User password (optional, auto-generated if empty)
+#   MYSQL_DB_EXTRA_GRANTS - Comma-separated GRANT statements without trailing semicolon (optional)
+#                           Example: "GRANT SELECT ON \`mysql\`.\`time_zone_name\`"
+#   MYSQL_DB_CREDS_FILE   - Credentials file path (optional, default: ~/${APPLICATION}.creds)
+#
+# Exports:
+#   MYSQL_DB_NAME, MYSQL_DB_USER, MYSQL_DB_PASS
+# ------------------------------------------------------------------------------
+
+function setup_mysql_db() {
+  if [[ -z "${MYSQL_DB_NAME:-}" || -z "${MYSQL_DB_USER:-}" ]]; then
+    msg_error "MYSQL_DB_NAME and MYSQL_DB_USER must be set before calling setup_mysql_db"
+    return 65
+  fi
+
+  if [[ -z "${MYSQL_DB_PASS:-}" ]]; then
+    MYSQL_DB_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
+  fi
+
+  msg_info "Setting up MySQL Database"
+
+  $STD mysql -u root -e "CREATE DATABASE IF NOT EXISTS \`$MYSQL_DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+  $STD mysql -u root -e "CREATE USER IF NOT EXISTS '$MYSQL_DB_USER'@'localhost' IDENTIFIED BY '$MYSQL_DB_PASS';"
+  $STD mysql -u root -e "GRANT ALL ON \`$MYSQL_DB_NAME\`.* TO '$MYSQL_DB_USER'@'localhost';"
+
+  # Optional extra grants
+  if [[ -n "${MYSQL_DB_EXTRA_GRANTS:-}" ]]; then
+    IFS=',' read -ra G_LIST <<<"${MYSQL_DB_EXTRA_GRANTS:-}"
+    for g in "${G_LIST[@]}"; do
+      g=$(echo "$g" | xargs)
+      $STD mysql -u root -e "$g TO '$MYSQL_DB_USER'@'localhost';"
+    done
+  fi
+
+  $STD mysql -u root -e "FLUSH PRIVILEGES;"
+
+  local app_name="${APPLICATION,,}"
+  local CREDS_FILE="${MYSQL_DB_CREDS_FILE:-${HOME}/${app_name}.creds}"
+  {
+    echo "MySQL Credentials"
+    echo "Database: $MYSQL_DB_NAME"
+    echo "User: $MYSQL_DB_USER"
+    echo "Password: $MYSQL_DB_PASS"
+  } >>"$CREDS_FILE"
+
+  msg_ok "Set up MySQL Database"
+
+  export MYSQL_DB_NAME
+  export MYSQL_DB_USER
+  export MYSQL_DB_PASS
+}
+
+# ------------------------------------------------------------------------------
 # Installs Node.js and optional global modules.
 #
 # Description:

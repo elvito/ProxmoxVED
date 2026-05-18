@@ -15,13 +15,7 @@ update_os
 
 setup_mysql
 
-msg_info "Setting up MySQL Database"
-DB_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
-mysql -uroot -e "CREATE DATABASE IF NOT EXISTS fleet CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -uroot -e "CREATE USER IF NOT EXISTS 'fleet'@'localhost' IDENTIFIED BY '${DB_PASS}';"
-mysql -uroot -e "GRANT ALL PRIVILEGES ON fleet.* TO 'fleet'@'localhost';"
-mysql -uroot -e "FLUSH PRIVILEGES;"
-msg_ok "Set up MySQL Database"
+MYSQL_DB_NAME="fleet" MYSQL_DB_USER="fleet" setup_mysql_db
 
 msg_info "Installing Dependencies"
 $STD apt install -y redis-server
@@ -36,7 +30,7 @@ cat <<EOF >/opt/fleet/.env
 FLEET_MYSQL_ADDRESS=127.0.0.1:3306
 FLEET_MYSQL_DATABASE=fleet
 FLEET_MYSQL_USERNAME=fleet
-FLEET_MYSQL_PASSWORD=${DB_PASS}
+FLEET_MYSQL_PASSWORD=${MYSQL_DB_PASS}
 FLEET_SERVER_ADDRESS=0.0.0.0:8080
 FLEET_SERVER_TLS=false
 FLEET_SERVER_PRIVATE_KEY=${PRIVATE_KEY}
