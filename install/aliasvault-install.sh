@@ -221,6 +221,8 @@ systemctl enable -q --now nginx
 $STD nginx -s reload
 msg_ok "Configured Nginx"
 
+mkdir -p /opt/certificates/app
+
 msg_info "Creating Services"
 cat <<EOF >/etc/systemd/system/aliasvault-api.service
 [Unit]
@@ -306,14 +308,12 @@ EOF
 systemctl enable -q --now aliasvault-api aliasvault-admin aliasvault-smtp aliasvault-taskrunner
 msg_ok "Created Services"
 
-echo ""
-echo "================================================================"
-echo "  AliasVault Initial Admin Credentials"
-echo "  Username: admin"
-echo "  Password: ${ADMIN_PASS}"
-echo "  Save these credentials — they will not be shown again!"
-echo "================================================================"
-echo ""
+{
+  echo ""
+  echo "AliasVault Admin Credentials:"
+  echo "  Username: admin"
+  echo "  Password: ${ADMIN_PASS}"
+} >>~/aliasvault.creds
 
 motd_ssh
 customize
