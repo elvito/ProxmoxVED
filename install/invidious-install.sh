@@ -40,7 +40,7 @@ fetch_and_deploy_gh_release "Invidious Companion" "iv-org/invidious-companion" "
 
 msg_info "Building Invidious"
 cd /opt/invidious
-INVIDIOUS_VERSION="$(cat ~/.Invidious 2>/dev/null || echo "unknown")"
+INVIDIOUS_VERSION="$(cat ~/.invidious 2>/dev/null || echo "unknown")"
 INVIDIOUS_VERSION="${INVIDIOUS_VERSION#v}"
 sed -i \
   -e "s~^\(\s*CURRENT_BRANCH\s*=\).*~\1 \"master\"~" \
