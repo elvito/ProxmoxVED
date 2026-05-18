@@ -38,15 +38,17 @@ msg_info "Configuring Application"
 cat <<EOF >/etc/puter/config.json
 {
   "config_name": "proxmox",
+  "env": "prod",
   "domain": "${LOCAL_IP}.nip.io",
   "protocol": "http",
-  "http_port": 4100,
+  "port": 4100,
   "allow_nipio_domains": true,
-  "services": {
-    "database": {
-      "engine": "sqlite",
-      "path": "puter-database.sqlite"
-    }
+  "database": {
+    "engine": "sqlite",
+    "path": "/var/puter/puter-database.sqlite"
+  },
+  "providers": {
+    "ollama": { "enabled": false }
   }
 }
 EOF
