@@ -35,6 +35,7 @@ function update_script() {
     msg_ok "Stopped Service"
 
     msg_info "Backing up Configuration"
+    rm -f /opt/spliit.env.bak
     cp /opt/spliit/.env /opt/spliit.env.bak
     msg_ok "Backed up Configuration"
 
@@ -42,7 +43,6 @@ function update_script() {
 
     msg_info "Restoring Configuration"
     cp /opt/spliit.env.bak /opt/spliit/.env
-    rm -f /opt/spliit.env.bak
     msg_ok "Restored Configuration"
 
     msg_info "Building Application"

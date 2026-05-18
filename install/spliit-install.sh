@@ -22,7 +22,6 @@ msg_ok "Installed Dependencies"
 PG_VERSION="16" setup_postgresql
 PG_DB_NAME="spliit" PG_DB_USER="spliit" setup_postgresql_db
 NODE_VERSION="22" setup_nodejs
-
 fetch_and_deploy_gh_release "spliit" "spliit-app/spliit" "tarball"
 
 msg_info "Configuring Application"
