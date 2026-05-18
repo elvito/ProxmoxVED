@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright (c) 2021-2026 community-scripts ORG
-# Author: a (cynicalchicken)
+# Author: phof
 # License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/spliit-app/spliit
 
@@ -12,12 +12,6 @@ catch_errors
 setting_up_container
 network_check
 update_os
-
-msg_info "Installing Dependencies"
-$STD apt install -y \
-  build-essential \
-  git
-msg_ok "Installed Dependencies"
 
 PG_VERSION="16" setup_postgresql
 PG_DB_NAME="spliit" PG_DB_USER="spliit" setup_postgresql_db
