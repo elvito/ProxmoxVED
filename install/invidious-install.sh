@@ -87,12 +87,25 @@ sed -e 's|^User=invidious|User=root|' \
   -e 's|^Group=invidious|Group=root|' \
   -e 's|/home/invidious/invidious|/opt/invidious|g' \
   /opt/invidious/invidious.service >/etc/systemd/system/invidious.service
-curl -fsSL https://github.com/iv-org/invidious-companion/raw/refs/heads/master/invidious-companion.service -o /etc/systemd/system/invidious-companion.service
-sed -i -e "s|CHANGE_ME$|${SECRET_KEY}|" \
-  -e 's|^User=invidious|User=root|' \
-  -e 's|^Group=invidious|Group=root|' \
-  -e 's|/home/invidious/invidious-companion|/opt/invidious-companion|g' \
-  /etc/systemd/system/invidious-companion.service
+mkdir -p /var/tmp/youtubei.js
+cat <<EOF >/etc/systemd/system/invidious-companion.service
+[Unit]
+Description=Invidious Companion
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/invidious-companion
+Environment=SERVER_SECRET_KEY=${SECRET_KEY}
+Environment=CACHE_DIRECTORY=/var/tmp/youtubei.js
+ExecStart=/opt/invidious-companion/invidious_companion
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target
+EOF
 systemctl -q enable --now invidious invidious-companion
 msg_ok "Configured services"
 
