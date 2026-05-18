@@ -78,7 +78,7 @@ done
 SETUP_RESPONSE=$(curl -s -X POST "http://127.0.0.1:8080/api/latest/fleet/setup" \
   -H "Content-Type: application/json" \
   -d "{\"admin\":{\"admin\":true,\"email\":\"${FLEET_ADMIN_EMAIL}\",\"name\":\"Admin\",\"password\":\"${FLEET_ADMIN_PASS}\"},\"org_info\":{\"org_name\":\"Fleet\",\"org_logo_url\":\"\"},\"server_url\":\"http://127.0.0.1:8080\"}")
-FLEET_TOKEN=$(echo "${SETUP_RESPONSE}" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+FLEET_TOKEN=$(echo "${SETUP_RESPONSE}" | grep -o '"token":"[^"]*"' | cut -d'"' -f4) || true
 if [[ -n "${FLEET_TOKEN}" ]]; then
   curl -s -X PATCH "http://127.0.0.1:8080/api/latest/fleet/config" \
     -H "Content-Type: application/json" \
