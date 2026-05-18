@@ -42,6 +42,7 @@ cat <<EOF >/etc/puter/config.json
   "domain": "${LOCAL_IP}.nip.io",
   "protocol": "http",
   "port": 4100,
+  "pub_port": 4100,
   "allow_nipio_domains": true,
   "database": {
     "engine": "sqlite",
