@@ -6,6 +6,7 @@
 # Source: https://netbird.io
 
 source <(curl -fsSL "${COMMUNITY_SCRIPTS_URL:-https://git.community-scripts.org/community-scripts/ProxmoxVED/raw/branch/main}/misc/vm-core.func")
+source <(curl -fsSL "${COMMUNITY_SCRIPTS_URL:-https://git.community-scripts.org/community-scripts/ProxmoxVED/raw/branch/main}/misc/cloud-init.func") 2>/dev/null || true
 load_functions
 
 function header_info {
