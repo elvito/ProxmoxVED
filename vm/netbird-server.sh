@@ -566,10 +566,10 @@ msg_info "Writing NetBird configuration"
 NETBIRD_ENV_TMP=$(mktemp)
 cat >"$NETBIRD_ENV_TMP" <<ENVEOF
 NETBIRD_DOMAIN="${NETBIRD_DOMAIN_INPUT}"
-REVERSE_PROXY_TYPE="${NETBIRD_PROXY_TYPE_INPUT}"
-TRAEFIK_ACME_EMAIL="${NETBIRD_EMAIL_INPUT}"
-ENABLE_PROXY="false"
-ENABLE_CROWDSEC="false"
+NETBIRD_AUTO_PROXY_TYPE="${NETBIRD_PROXY_TYPE_INPUT}"
+NETBIRD_AUTO_EMAIL="${NETBIRD_EMAIL_INPUT}"
+NETBIRD_AUTO_ENABLE_PROXY="false"
+NETBIRD_AUTO_ENABLE_CROWDSEC="false"
 ENVEOF
 virt-customize -q -a "$WORK_FILE" --upload "${NETBIRD_ENV_TMP}:/root/netbird.env" >/dev/null 2>&1
 rm -f "$NETBIRD_ENV_TMP"
@@ -599,12 +599,12 @@ set +a
 curl -fsSL https://github.com/netbirdio/netbird/releases/latest/download/getting-started.sh \
   -o /root/getting-started.sh
 
-# Patch interactive reads to prefer pre-set env vars
+# Patch interactive reads: use NETBIRD_AUTO_* env vars (never overwritten by initialize_default_values)
 sed -i \
-  -e 's/REVERSE_PROXY_TYPE=$(read_reverse_proxy_type)/REVERSE_PROXY_TYPE="${REVERSE_PROXY_TYPE:-$(read_reverse_proxy_type)}"/' \
-  -e 's/TRAEFIK_ACME_EMAIL=$(read_traefik_acme_email)/TRAEFIK_ACME_EMAIL="${TRAEFIK_ACME_EMAIL:-$(read_traefik_acme_email)}"/' \
-  -e 's/ENABLE_PROXY=$(read_enable_proxy)/ENABLE_PROXY="${ENABLE_PROXY:-$(read_enable_proxy)}"/' \
-  -e 's/ENABLE_CROWDSEC=$(read_enable_crowdsec)/ENABLE_CROWDSEC="${ENABLE_CROWDSEC:-$(read_enable_crowdsec)}"/' \
+  -e 's/REVERSE_PROXY_TYPE=$(read_reverse_proxy_type)/REVERSE_PROXY_TYPE="${NETBIRD_AUTO_PROXY_TYPE:-$(read_reverse_proxy_type)}"/'\
+  -e 's/TRAEFIK_ACME_EMAIL=$(read_traefik_acme_email)/TRAEFIK_ACME_EMAIL="${NETBIRD_AUTO_EMAIL:-$(read_traefik_acme_email)}"/'\
+  -e 's/ENABLE_PROXY=$(read_enable_proxy)/ENABLE_PROXY="${NETBIRD_AUTO_ENABLE_PROXY:-$(read_enable_proxy)}"/'\
+  -e 's/ENABLE_CROWDSEC=$(read_enable_crowdsec)/ENABLE_CROWDSEC="${NETBIRD_AUTO_ENABLE_CROWDSEC:-$(read_enable_crowdsec)}"/'\
   /root/getting-started.sh
 
 echo "[$(date)] Running NetBird getting-started.sh"
