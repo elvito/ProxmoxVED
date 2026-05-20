@@ -11,7 +11,7 @@
     "interface_port": 5580,
     "documentation": "https://github.com/matter-js/matterjs-server",
     "website": "https://github.com/matter-js/matterjs-server",
-    "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/home-assistant.webp",
+    "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/matter.webp",
     "description": "JavaScript-based Matter controller server (successor to Python Matter Server). Provides a WebSocket API compatible with the Home Assistant Matter integration.",
     "install_methods": [
         {
