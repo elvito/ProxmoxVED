@@ -15,7 +15,6 @@ update_os
 
 msg_info "Installing Dependencies"
 $STD apt install -y \
-  unzip \
   git \
   libsqlite3-0
 msg_ok "Installed Dependencies"
@@ -49,10 +48,7 @@ $STD deno install --node-modules-dir
 export APP_BASE_PATH=/opt/profilarr/dist/build
 export VITE_CHANNEL=stable
 $STD deno run -A npm:vite build
-case "$ARCH" in
-aarch64) DENO_TARGET="aarch64-unknown-linux-gnu" ;;
-*) DENO_TARGET="x86_64-unknown-linux-gnu" ;;
-esac
+DENO_TARGET="${ARCH}-unknown-linux-gnu"
 $STD deno compile \
   --no-check \
   --allow-net \
