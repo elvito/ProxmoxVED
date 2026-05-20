@@ -16,7 +16,9 @@ update_os
 NODE_VERSION="22" setup_nodejs
 
 msg_info "Installing MatterJS-Server"
-$STD npm install -g matter-server
+mkdir -p /opt/matter-server
+cd /opt/matter-server
+$STD npm install matter-server
 mkdir -p /var/lib/matterjs-server
 msg_ok "Installed MatterJS-Server"
 
@@ -29,7 +31,7 @@ After=network.target
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/local/bin/matter-server --storage-path /var/lib/matterjs-server
+ExecStart=/usr/bin/node /opt/matter-server/node_modules/matter-server/dist/esm/MatterServer.js --storage-path /var/lib/matterjs-server
 Restart=on-failure
 RestartSec=5
 

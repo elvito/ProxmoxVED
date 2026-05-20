@@ -24,30 +24,30 @@ function update_script() {
   check_container_storage
   check_container_resources
 
-  if [[ ! -f /usr/local/bin/matter-server ]]; then
+  if [[ ! -d /opt/matter-server ]]; then
     msg_error "No ${APP} Installation Found!"
     exit
   fi
 
-  CURRENT=$(npm list -g matter-server --depth=0 2>/dev/null | grep matter-server | sed 's/.*@//')
-  LATEST=$(npm show matter-server version 2>/dev/null)
-  if [[ "$CURRENT" == "$LATEST" ]]; then
+  CURRENT=$(cat /opt/matter-server/node_modules/matter-server/package.json | grep '"version"' | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
+  LATEST=$(npm view matter-server version 2>/dev/null)
+  if [[ "$CURRENT" != "$LATEST" ]]; then
+    msg_info "Stopping Service"
+    systemctl stop matterjs-server
+    msg_ok "Stopped Service"
+
+    msg_info "Updating ${APP} from v${CURRENT} to v${LATEST}"
+    cd /opt/matter-server
+    $STD npm install matter-server@latest
+    msg_ok "Updated ${APP}"
+
+    msg_info "Starting Service"
+    systemctl start matterjs-server
+    msg_ok "Started Service"
+    msg_ok "Updated successfully!"
+  else
     msg_ok "No update required. ${APP} is already at v${LATEST}"
-    exit
   fi
-
-  msg_info "Stopping Service"
-  systemctl stop matterjs-server
-  msg_ok "Stopped Service"
-
-  msg_info "Updating ${APP} to v${LATEST}"
-  $STD npm install -g matter-server
-  msg_ok "Updated ${APP} to v${LATEST}"
-
-  msg_info "Starting Service"
-  systemctl start matterjs-server
-  msg_ok "Started Service"
-  msg_ok "Updated successfully!"
   exit
 }
 
