@@ -46,7 +46,7 @@ Type=simple
 User=root
 WorkingDirectory=/opt/tolgee
 EnvironmentFile=/opt/tolgee/.env
-ExecStart=/usr/bin/java -jar /opt/tolgee/tolgee.jar
+ExecStart=/usr/bin/java -jar /opt/tolgee/tolgee
 Restart=on-failure
 RestartSec=5
 
