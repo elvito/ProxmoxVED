@@ -20,47 +20,37 @@ color
 catch_errors
 
 function update_script() {
-    header_info
-    check_container_storage
-    check_container_resources
+  header_info
+  check_container_storage
+  check_container_resources
 
-    if [[ ! -f /opt/koffan/koffan ]]; then
-        msg_error "No ${APP} Installation Found!"
-        exit
-    fi
-
-    RELEASE=$(curl -s https://api.github.com/repos/PanSalut/Koffan/releases/latest | grep "tag_name" | sed -E 's/[^0-9.]//g')
-    if [[ "${RELEASE}" != "$(cat /opt/${APP}_version.txt)" ]] || [[ ! -f /opt/${APP}_version.txt ]]; then
-        msg_info "Stopping $APP"
-        systemctl stop koffan.service
-        msg_ok "Stopped $APP"
-
-        msg_info "Creating Backup"
-        tar -czf "/opt/${APP}_backup_$(date +%F).tar.gz" /opt/koffan/
-        msg_ok "Backup Created"
-
-        msg_info "Updating $APP to ${RELEASE}"
-        curl -fsSL "https://github.com/PanSalut/Koffan/archive/refs/tags/v${RELEASE}.tar.gz" | tar -xz
-        mv ${APP}-${RELEASE}/ /opt/koffan
-        cd /opt/koffan
-        go build -o $APP main.go
-
-        msg_ok "Updated $APP to v${RELEASE}"
-
-        msg_info "Starting $APP"
-        systemctl start $APP.service
-        msg_ok "Started $APP"
-
-        msg_info "Cleaning Up"
-        # nothing to clean
-        msg_ok "Cleanup Completed"
-
-        echo "${RELEASE}" >/opt/${APP}_version.txt
-        msg_ok "Update Successful"
-    else
-        msg_ok "No update required. ${APP} is already at v${RELEASE}"
-    fi
+  if [[ ! -f /opt/koffan/koffan ]]; then
+    msg_error "No ${APP} Installation Found!"
     exit
+  fi
+
+  if check_for_gh_release "koffan" "PanSalut/Koffan"; then
+    msg_info "Stopping Service"
+    systemctl stop koffan
+    msg_ok "Stopped Service"
+
+    msg_info "Creating Backup"
+    tar -czf /opt/koffan_backup_$(date +%F).tar.gz /opt/data/
+    msg_ok "Backup Created"
+
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "koffan" "PanSalut/Koffan"
+
+    msg_info "Rebuilding Koffan"
+    cd /opt/koffan
+    go build -o koffan main.go
+    msg_ok "Rebuild Completed"
+
+    msg_info "Starting Service"
+    systemctl start koffan
+    msg_ok "Started Service"
+    msg_ok "Updated successfully!"
+  fi
+  exit
 }
 
 start
@@ -70,5 +60,4 @@ description
 msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
 echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${INFO}${YW} The default password is: shopping123${CL}"
 echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3000${CL}"

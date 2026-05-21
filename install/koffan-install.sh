@@ -13,36 +13,34 @@ setting_up_container
 network_check
 update_os
 
-msg_info "Installing Dependencies"
-$STD apt-get install -y \
-  curl \
-  sudo \
-  mc \
-  golang-go
-msg_ok "Installed Dependencies"
+ensure_dependencies build-essential
+setup_go
 
-msg_info "Setup ${APPLICATION}"
-RELEASE=$(curl -s https://api.github.com/repos/PanSalut/Koffan/releases/latest | grep "tag_name" | sed -E 's/[^0-9.]//g')
-curl -fsSL "https://github.com/PanSalut/Koffan/archive/refs/tags/v${RELEASE}.tar.gz" | tar -xz
-mv ${APPLICATION}-${RELEASE}/ /opt/koffan
+fetch_and_deploy_gh_release "koffan" "PanSalut/Koffan"
+
+msg_info "Building Koffan"
 cd /opt/koffan
 go build -o koffan main.go
-cat <<EOF >/opt/.env
+msg_ok "Building Completed"
+
+msg_info "Configuring Koffan"
+mkdir /opt/data
+cat <<EOF >/opt/data/.env
 APP_ENV=production
 APP_PASSWORD=shopping123
 PORT=3000
+DB_PATH=/opt/data/shopping.db
 EOF
-echo "${RELEASE}" >/opt/${APPLICATION}_version.txt
-msg_ok "Setup ${APPLICATION}"
+msg_ok "Configuration Completed"
 
 msg_info "Creating Service"
-cat <<EOF >/etc/systemd/system/${APPLICATION}.service
+cat <<EOF >/etc/systemd/system/koffan.service
 [Unit]
-Description=${APPLICATION} Service
+Description=Koffan Service
 After=network.target
 
 [Service]
-EnvironmentFile=/opt/.env
+EnvironmentFile=/opt/data/.env
 WorkingDirectory=/opt/koffan
 ExecStart=/opt/koffan/koffan
 Restart=always
@@ -50,13 +48,9 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl enable -q --now ${APPLICATION}.service
+systemctl enable -q --now koffan
 msg_ok "Created Service"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc
