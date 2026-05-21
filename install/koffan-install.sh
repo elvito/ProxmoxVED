@@ -24,23 +24,23 @@ go build -o koffan main.go
 msg_ok "Building Completed"
 
 msg_info "Configuring Koffan"
-mkdir /opt/data
-cat <<EOF >/opt/data/.env
+mkdir /opt/koffan/data
+cat <<EOF >/opt/koffan/data/.env
 APP_ENV=production
 APP_PASSWORD=shopping123
 PORT=3000
-DB_PATH=/opt/data/shopping.db
+DB_PATH=/opt/koffan/data/shopping.db
 EOF
 msg_ok "Configuration Completed"
 
-msg_info "Creating Service"
+msg_info "Creating systemd service"
 cat <<EOF >/etc/systemd/system/koffan.service
 [Unit]
 Description=Koffan Service
 After=network.target
 
 [Service]
-EnvironmentFile=/opt/data/.env
+EnvironmentFile=/opt/koffan/data/.env
 WorkingDirectory=/opt/koffan
 ExecStart=/opt/koffan/koffan
 Restart=always
@@ -48,9 +48,11 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl enable -q --now koffan
-msg_ok "Created Service"
+msg_ok "Service created"
 
+msg_info "Finalizing Koffan installation"
+systemctl enable -q --now koffan
 motd_ssh
 customize
+msg_ok "Koffan installation complete"
 cleanup_lxc

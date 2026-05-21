@@ -6,13 +6,13 @@ source <(curl -s https://raw.githubusercontent.com/AminGholizad/ProxmoxVED/main/
 # Source: https://github.com/PanSalut/Koffan
 
 APP="Koffan"
-var_tags="productivity"
-var_cpu="1"
-var_ram="512"
-var_disk="4"
-var_os="debian"
-var_version="13"
-var_unprivileged="1"
+var_tags="${var_tags:-productivity}"
+var_cpu="${var_cpu:-1}"
+var_ram="${var_ram:-512}"
+var_disk="${var_disk:-4}"
+var_os="${var_os:-debian}"
+var_version="${var_version:-13}"
+var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
 variables
@@ -34,9 +34,9 @@ function update_script() {
     systemctl stop koffan
     msg_ok "Stopped Service"
 
-    msg_info "Creating Backup"
-    tar -czf /opt/koffan_backup_$(date +%F).tar.gz /opt/data/
-    msg_ok "Backup Created"
+    msg_info "Backing up Data"
+    cp -r /opt/koffan/data /opt/koffan_data_backup 2>/dev/null || true
+    msg_ok "Backed up Data"
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "koffan" "PanSalut/Koffan"
 
@@ -44,6 +44,11 @@ function update_script() {
     cd /opt/koffan
     go build -o koffan main.go
     msg_ok "Rebuild Completed"
+
+    msg_info "Restoring Data"
+    cp -r /opt/koffan_data_backup/. /opt/koffan/data/ 2>/dev/null || true
+    rm -rf /opt/koffan_data_backup
+    msg_ok "Restored Data"
 
     msg_info "Starting Service"
     systemctl start koffan
