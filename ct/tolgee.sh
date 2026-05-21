@@ -34,29 +34,8 @@ function update_script() {
     systemctl stop tolgee
     msg_ok "Stopped Service"
 
-    msg_info "Backing up Data"
-    if [[ -f /opt/tolgee/.env ]]; then
-      cp /opt/tolgee/.env /opt/tolgee.env.bak
-    fi
-    if [[ -d /opt/tolgee/data ]]; then
-      cp -r /opt/tolgee/data /opt/tolgee_data_backup
-    fi
-    msg_ok "Backed up Data"
-
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "tolgee" "tolgee/tolgee-platform" "singlefile" "latest" "/opt/tolgee" "tolgee-*.jar"
-
     find /opt/tolgee -maxdepth 1 -type f -name 'tolgee-*.jar' -exec mv {} /opt/tolgee/tolgee.jar \;
-
-    msg_info "Restoring Data"
-    if [[ -f /opt/tolgee.env.bak ]]; then
-      cp /opt/tolgee.env.bak /opt/tolgee/.env
-      rm -f /opt/tolgee.env.bak
-    fi
-    if [[ -d /opt/tolgee_data_backup ]]; then
-      cp -r /opt/tolgee_data_backup/. /opt/tolgee/data
-      rm -rf /opt/tolgee_data_backup
-    fi
-    msg_ok "Restored Data"
 
     msg_info "Starting Service"
     systemctl start tolgee
