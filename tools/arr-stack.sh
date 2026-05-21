@@ -12,12 +12,18 @@ set -eEo pipefail
 color
 formatting
 icons
+set_std_mode
+
+SILENT_LOGFILE="/tmp/arr-stack-$$.log"
+silent() { "$@" >>"$SILENT_LOGFILE" 2>&1; }
 
 msg_info()  { echo -e "${INFO:-[i]} ${YW}${1}${CL}"; }
 msg_ok()    { echo -e "${CM:-[ok]} ${GN}${1}${CL}"; }
 msg_warn()  { echo -e "${YW}[WARN]${CL} ${1}"; }
 msg_error() { echo -e "${CROSS:-[x]} ${RD}${1}${CL}"; }
 msg_step()  { echo -e "${BL}==>${CL} ${1}"; }
+
+cancelled() { msg_warn "Cancelled at $1."; exit 0; }
 
 var_container_storage="${var_container_storage:-}"
 var_template_storage="${var_template_storage:-}"
@@ -31,7 +37,19 @@ SUMMARY_FILE="${SUMMARY_FILE:-/root/arr-stack-summary.txt}"
 BACKTITLE="Proxmox VE Helper Scripts — arr Stack"
 
 TEMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TEMP_DIR"' EXIT
+_on_exit() {
+  local rc=$?
+  if (( rc != 0 )); then
+    if (( ${#INSTALLED_SLUGS[@]} > 0 )); then orphan_report; fi
+    if [[ -s "$SILENT_LOGFILE" ]]; then
+      echo
+      msg_error "Last 20 lines of ${SILENT_LOGFILE}:"
+      tail -n 20 "$SILENT_LOGFILE"
+    fi
+  fi
+  rm -rf "$TEMP_DIR"
+}
+trap _on_exit EXIT
 
 declare -A CTID_BY_SLUG
 declare -A IP_BY_SLUG
@@ -150,7 +168,7 @@ pick_storage() {
       var_container_storage=$(whiptail --backtitle "$BACKTITLE" \
         --title "Container Storage" \
         --menu "Pick a PVE storage for the container rootfs:" 20 70 10 \
-        "${options[@]}" 3>&1 1>&2 2>&3) || exit 0
+        "${options[@]}" 3>&1 1>&2 2>&3) || cancelled "storage pick"
     fi
   fi
 
@@ -177,14 +195,14 @@ pick_network_defaults() {
     var_bridge=$(whiptail --backtitle "$BACKTITLE" \
       --title "Network Bridge" \
       --menu "Pick the Linux bridge for all containers:" 15 60 6 \
-      "${options[@]}" 3>&1 1>&2 2>&3) || exit 0
+      "${options[@]}" 3>&1 1>&2 2>&3) || cancelled "bridge pick"
   fi
 
   while [[ -z "$var_gateway" ]] || ! is_valid_ipv4 "$var_gateway"; do
     var_gateway=$(whiptail --backtitle "$BACKTITLE" \
       --title "Gateway" \
       --inputbox "IPv4 gateway for the container subnet:" 10 60 \
-      "${var_gateway:-}" 3>&1 1>&2 2>&3) || exit 0
+      "${var_gateway:-}" 3>&1 1>&2 2>&3) || cancelled "gateway prompt"
     if ! is_valid_ipv4 "$var_gateway"; then
       whiptail --backtitle "$BACKTITLE" --title "Invalid" \
         --msgbox "Not a valid IPv4 address: ${var_gateway}" 8 60
@@ -196,7 +214,7 @@ pick_network_defaults() {
     var_cidr=$(whiptail --backtitle "$BACKTITLE" \
       --title "CIDR Mask" \
       --inputbox "Network mask (1-32, e.g. 24):" 10 60 \
-      "${var_cidr:-24}" 3>&1 1>&2 2>&3) || exit 0
+      "${var_cidr:-24}" 3>&1 1>&2 2>&3) || cancelled "CIDR prompt"
     if [[ "$var_cidr" =~ ^[0-9]+$ ]] && (( var_cidr >= 1 && var_cidr <= 32 )); then
       break
     fi
@@ -217,7 +235,7 @@ pick_apps() {
       "radarr" "Radarr (Movies)" ON \
       "lidarr" "Lidarr (Music)" OFF \
       "seerr"  "Seerr (Requests)" OFF \
-      3>&1 1>&2 2>&3) || exit 0
+      3>&1 1>&2 2>&3) || cancelled "*arr app pick"
 
     SELECTED_ARRS=$(echo "$choice" | tr -d '"')
 
@@ -239,7 +257,7 @@ pick_clients() {
     --checklist "Optional download clients to install + wire:" 14 70 4 \
     "qbittorrent" "qBittorrent (Torrents)" ON \
     "sabnzbd"     "SABnzbd (Usenet)" OFF \
-    3>&1 1>&2 2>&3) || exit 0
+    3>&1 1>&2 2>&3) || cancelled "download client pick"
 
   SELECTED_CLIENTS=$(echo "$choice" | tr -d '"')
 }
@@ -266,7 +284,7 @@ pick_ip_mode_and_ips() {
     --menu "How would you like to enter IP addresses?" 14 70 2 \
     "list"       "Enter all IPs at once (space- or comma-separated)" \
     "one_by_one" "Prompt per container" \
-    3>&1 1>&2 2>&3) || exit 0
+    3>&1 1>&2 2>&3) || cancelled "IP entry mode pick"
 
   if [[ "$mode" == "list" ]]; then
     _collect_ips_list_mode
@@ -285,7 +303,7 @@ _collect_ips_list_mode() {
     raw=$(whiptail --backtitle "$BACKTITLE" \
       --title "Enter ${expected_n} IPv4 addresses" \
       --inputbox "Enter ${expected_n} IPs separated by spaces or commas, in this order:"$'\n\n'"${hint}" \
-      22 78 "" 3>&1 1>&2 2>&3) || exit 0
+      22 78 "" 3>&1 1>&2 2>&3) || cancelled "IP list entry"
 
     local normalized="${raw//,/ }"
     local -a ips=()
@@ -335,7 +353,7 @@ _collect_ips_one_by_one() {
       ip=$(whiptail --backtitle "$BACKTITLE" \
         --title "IP for ${slug}" \
         --inputbox "Enter IPv4 for ${slug}.${running:+$'\n\nAlready assigned:'}${running}" \
-        16 60 "" 3>&1 1>&2 2>&3) || exit 0
+        16 60 "" 3>&1 1>&2 2>&3) || cancelled "IP prompt for ${slug}"
 
       if ! is_valid_ipv4 "$ip"; then
         whiptail --backtitle "$BACKTITLE" --title "Invalid" \
@@ -376,7 +394,7 @@ pick_start_ctid() {
   start=$(whiptail --backtitle "$BACKTITLE" \
     --title "Starting CTID" \
     --inputbox "Starting Container ID (in-use IDs are skipped):" 10 60 \
-    "$default_start" 3>&1 1>&2 2>&3) || exit 0
+    "$default_start" 3>&1 1>&2 2>&3) || cancelled "starting CTID prompt"
 
   if ! [[ "$start" =~ ^[0-9]+$ ]]; then
     msg_error "Invalid CTID: $start"
@@ -428,34 +446,29 @@ install_loop() {
     script_file="$TEMP_DIR/${s}.sh"
 
     msg_step "[${idx}/${total}] Downloading ct/${s}.sh"
-    curl -fsSL \
+    $STD curl -fsSL \
       "https://raw.githubusercontent.com/community-scripts/${var_repo}/main/ct/${s}.sh" \
       -o "$script_file"
 
     if [[ ! -s "$script_file" ]]; then
       msg_error "Empty/failed download for ${s}"
-      orphan_report
       exit 1
     fi
 
     msg_step "[${idx}/${total}] Installing ${s} -> ctid=${ctid} ip=${ip}/${var_cidr}"
-    if env \
-        MODE=generated mode=generated PHS_SILENT=1 \
-        var_ctid="$ctid" \
-        var_hostname="$s" \
-        var_brg="$var_bridge" \
-        var_net="${ip}/${var_cidr}" \
-        var_gateway="$var_gateway" \
-        var_container_storage="$var_container_storage" \
-        var_template_storage="$var_template_storage" \
-        bash "$script_file"; then
-      INSTALLED_SLUGS+=("$s")
-      msg_ok "Installed ${s}"
-    else
-      msg_error "Install failed for ${s} (ctid=${ctid})."
-      orphan_report
-      exit 1
-    fi
+    $STD env \
+      MODE=generated mode=generated PHS_SILENT=1 \
+      var_ctid="$ctid" \
+      var_hostname="$s" \
+      var_brg="$var_bridge" \
+      var_net="${ip}/${var_cidr}" \
+      var_gateway="$var_gateway" \
+      var_container_storage="$var_container_storage" \
+      var_template_storage="$var_template_storage" \
+      bash "$script_file"
+
+    INSTALLED_SLUGS+=("$s")
+    msg_ok "Installed ${s}"
 
     if [[ "${KIND_BY_SLUG[$s]}" == "arr" || "${KIND_BY_SLUG[$s]}" == "indexer" ]]; then
       msg_info "Waiting for ${s} to listen on ${port}..."
