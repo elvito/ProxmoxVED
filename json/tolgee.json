@@ -29,16 +29,7 @@
     ],
     "default_credentials": {
         "username": "admin",
-        "password": "Stored in /opt/tolgee/data/initial.pwd"
+        "password": "cat /opt/tolgee_data/initial.pwd"
     },
-    "notes": [
-        {
-            "text": "Tolgee listens on port 8080 by default.",
-            "type": "info"
-        },
-        {
-            "text": "The initial admin password is generated automatically and stored in /opt/tolgee/data/initial.pwd on first start.",
-            "type": "info"
-        }
-    ]
+    "notes": []
 }
