@@ -278,19 +278,120 @@ compute_ordered_slugs() {
 }
 
 pick_ip_mode_and_ips() {
-  local mode
-  mode=$(whiptail --backtitle "$BACKTITLE" \
-    --title "IP Entry Mode" \
-    --menu "How would you like to enter IP addresses?" 14 70 2 \
-    "list"       "Enter all IPs at once (space- or comma-separated)" \
-    "one_by_one" "Prompt per container" \
-    3>&1 1>&2 2>&3) || cancelled "IP entry mode pick"
+  while true; do
+    local mode
+    mode=$(whiptail --backtitle "$BACKTITLE" \
+      --title "IP Entry Mode" \
+      --menu "How would you like to enter IP addresses?" 15 75 3 \
+      "list"       "Enter all IPs at once (space- or comma-separated)" \
+      "one_by_one" "Prompt per container" \
+      "auto"       "Auto-pick free IPs from a starting IP or range(s)" \
+      3>&1 1>&2 2>&3) || cancelled "IP entry mode pick"
 
-  if [[ "$mode" == "list" ]]; then
-    _collect_ips_list_mode
-  else
-    _collect_ips_one_by_one
+    case "$mode" in
+      list)       _collect_ips_list_mode; return ;;
+      one_by_one) _collect_ips_one_by_one; return ;;
+      auto)       _collect_ips_auto && return ;;
+    esac
+  done
+}
+
+_parse_ip_ranges() {
+  local expr=$1
+  local -a segments
+  IFS=',' read -ra segments <<<"$expr"
+  local seg prefix start end i
+  for seg in "${segments[@]}"; do
+    seg="${seg// /}"
+    [[ -z "$seg" ]] && continue
+    if [[ "$seg" =~ ^([0-9]+\.[0-9]+\.[0-9]+\.)([0-9]+)-([0-9]+\.[0-9]+\.[0-9]+\.)([0-9]+)$ ]]; then
+      if [[ "${BASH_REMATCH[1]}" != "${BASH_REMATCH[3]}" ]]; then
+        echo "ERR: cross-subnet range not supported: $seg" >&2; return 1
+      fi
+      prefix=${BASH_REMATCH[1]}; start=${BASH_REMATCH[2]}; end=${BASH_REMATCH[4]}
+    elif [[ "$seg" =~ ^([0-9]+\.[0-9]+\.[0-9]+\.)([0-9]+)-([0-9]+)$ ]]; then
+      prefix=${BASH_REMATCH[1]}; start=${BASH_REMATCH[2]}; end=${BASH_REMATCH[3]}
+    elif [[ "$seg" =~ ^([0-9]+\.[0-9]+\.[0-9]+\.)([0-9]+)$ ]]; then
+      prefix=${BASH_REMATCH[1]}; start=${BASH_REMATCH[2]}; end=254
+    else
+      echo "ERR: invalid segment: $seg" >&2; return 1
+    fi
+    if (( start > end || start < 0 || end > 255 )); then
+      echo "ERR: out-of-range octet: $seg" >&2; return 1
+    fi
+    for ((i=start; i<=end; i++)); do
+      echo "${prefix}${i}"
+    done
+  done
+}
+
+_ip_is_free() {
+  local ip=$1
+  [[ "$ip" == "$var_gateway" ]] && return 1
+  if ping -c 1 -W 1 "$ip" >/dev/null 2>&1; then
+    return 1
   fi
+  return 0
+}
+
+_collect_ips_auto() {
+  local expected_n=${#ORDERED_SLUGS[@]}
+  local hint="Examples:"$'\n'"  10.0.0.50                       (start, scans upward to .254)"$'\n'"  10.0.0.50-99                    (single range)"$'\n'"  10.0.0.50-60,10.0.0.80-99       (multiple ranges)"
+
+  while true; do
+    local expr
+    expr=$(whiptail --backtitle "$BACKTITLE" \
+      --title "Auto IP allocation" \
+      --inputbox "Need ${expected_n} free IPs. Enter a starting IP or range expression:"$'\n\n'"${hint}" \
+      16 78 "" 3>&1 1>&2 2>&3) || return 1
+
+    local -a parsed=()
+    while IFS= read -r ip; do
+      [[ -n "$ip" ]] && parsed+=("$ip")
+    done < <(_parse_ip_ranges "$expr" 2>/dev/null)
+
+    if (( ${#parsed[@]} == 0 )); then
+      whiptail --backtitle "$BACKTITLE" --title "Invalid" \
+        --msgbox "Could not parse any IPs from: ${expr}"$'\n\n'"Try a starting IP, a range like 10.0.0.50-99, or comma-separated ranges." 12 70
+      continue
+    fi
+
+    msg_info "Pinging ${#parsed[@]} candidate(s) for ${expected_n} free IP(s)..."
+    local -a found=()
+    local ip already used
+    for ip in "${parsed[@]}"; do
+      (( ${#found[@]} >= expected_n )) && break
+      already=0
+      for used in "${IP_BY_SLUG[@]}"; do
+        [[ "$used" == "$ip" ]] && { already=1; break; }
+      done
+      (( already )) && continue
+      if _ip_is_free "$ip"; then
+        found+=("$ip")
+        echo "  free: ${ip}"
+      fi
+    done
+
+    if (( ${#found[@]} < expected_n )); then
+      whiptail --backtitle "$BACKTITLE" --title "Not enough free IPs" \
+        --msgbox "Found ${#found[@]}/${expected_n} free IPs in the range. Widen the range and try again." 10 70
+      continue
+    fi
+
+    local lines="" i
+    for i in "${!ORDERED_SLUGS[@]}"; do
+      lines+="  $(printf '%-12s -> %s' "${ORDERED_SLUGS[$i]}" "${found[$i]}")"$'\n'
+    done
+    if ! whiptail --backtitle "$BACKTITLE" --title "Confirm auto-assigned IPs" \
+         --yesno "Free IPs found:"$'\n\n'"${lines}"$'\n'"Use these?" 22 70; then
+      continue
+    fi
+
+    for i in "${!ORDERED_SLUGS[@]}"; do
+      IP_BY_SLUG[${ORDERED_SLUGS[$i]}]=${found[$i]}
+    done
+    return 0
+  done
 }
 
 _collect_ips_list_mode() {
@@ -860,7 +961,7 @@ main() {
   header_info
   check_root
   check_pve_tools
-  ensure_dependencies curl whiptail jq
+  ensure_dependencies curl whiptail jq iputils-ping
   seed_catalog
   pick_storage
   pick_network_defaults
