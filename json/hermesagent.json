@@ -42,7 +42,7 @@
             "type": "warning"
         },
         {
-            "text": "After container startup, login, switch to the hermes user (su - hermes) and run 'hermes setup' to configure your model provider and gateway server.",
+            "text": "After container startup, login as root and run 'hermes-setup' to configure your model provider and gateway server. When prompted to install the gateway service, install it as a user service (not a system service).",
             "type": "info"
         },
         {

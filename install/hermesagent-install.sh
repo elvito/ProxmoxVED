@@ -93,10 +93,31 @@ EOF
 systemctl enable -q --now hermes-dashboard
 msg_ok "Created Dashboard Service"
 
+msg_info "Creating Setup Helper"
+cat <<'SETUP' >/usr/bin/hermes-setup
+#!/usr/bin/env bash
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "Error: hermes-setup must be run as root." >&2
+  exit 1
+fi
+if [[ ! -x /home/hermes/.local/bin/hermes ]]; then
+  echo "Error: Hermes Agent is not installed." >&2
+  exit 1
+fi
+set -a; source /etc/default/hermes; set +a
+/home/hermes/.local/bin/hermes setup
+chown -R hermes:hermes /home/hermes
+chmod 750 /home/hermes
+chmod 700 /home/hermes/.hermes
+echo "Hermes setup complete. File permissions restored."
+SETUP
+chmod +x /usr/bin/hermes-setup
+msg_ok "Created Setup Helper"
+
 msg_info "Configuring Login Hints"
 cat <<'HINT' >/etc/profile.d/hermes-hint.sh
 if [[ "$(id -u)" -eq 0 ]]; then
-  echo "  Use 'su - hermes' to switch to the hermes user for running Hermes Agent."
+  echo "  Run 'hermes-setup' to configure your model provider and gateway server."
 fi
 HINT
 msg_ok "Configured Login Hints"
