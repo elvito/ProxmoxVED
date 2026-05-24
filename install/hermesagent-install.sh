@@ -96,14 +96,6 @@ msg_ok "Created Dashboard Service"
 msg_info "Creating Setup Helper"
 cat <<'SETUP' >/usr/bin/hermes-setup
 #!/usr/bin/env bash
-if [[ "$(id -u)" -ne 0 ]]; then
-  echo "Error: hermes-setup must be run as root." >&2
-  exit 1
-fi
-if [[ ! -x /home/hermes/.local/bin/hermes ]]; then
-  echo "Error: Hermes Agent is not installed." >&2
-  exit 1
-fi
 set -a; source /etc/default/hermes; set +a
 /home/hermes/.local/bin/hermes setup
 chown -R hermes:hermes /home/hermes
