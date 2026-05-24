@@ -101,6 +101,9 @@ set -a; source /etc/default/hermes; set +a
 chown -R hermes:hermes /home/hermes
 chmod 750 /home/hermes
 chmod 700 /home/hermes/.hermes
+if [[ -f /home/hermes/.config/systemd/user/hermes-gateway.service ]]; then
+  su - hermes -c 'systemctl --user enable --now hermes-gateway'
+fi
 echo "Hermes setup complete. File permissions restored."
 SETUP
 chmod +x /usr/bin/hermes-setup
