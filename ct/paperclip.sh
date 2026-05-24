@@ -30,7 +30,7 @@ function update_script() {
     exit
   fi
 
-  if check_for_gh_release "paperclip" "paperclipai/paperclip"; then
+  if check_for_gh_release "paperclip-ai" "paperclipai/paperclip"; then
     msg_info "Stopping Service"
     systemctl stop paperclip
     msg_ok "Stopped Service"
@@ -39,7 +39,7 @@ function update_script() {
     cp /opt/paperclip/.env /opt/paperclip.env.bak
     msg_ok "Backed up Configuration"
 
-    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "paperclip" "paperclipai/paperclip" "tarball"
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "paperclip-ai" "paperclipai/paperclip" "tarball"
 
     msg_info "Restoring Configuration"
     mv /opt/paperclip.env.bak /opt/paperclip/.env
