@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright (c) 2021-2026 community-scripts ORG
-# Author: [AminGholizad]
+# Author: (AminGholizad)
 # License: MIT | https://github.com/AminGholizad/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/PanSalut/Koffan
 
@@ -35,9 +35,9 @@ PORT=3000
 DB_PATH=/opt/koffan/data/shopping.db
 EOF
 
-{
-  echo "Password: ${PASSWORD}"
-} >~/koffan.creds
+cat <<EOF >~/koffan.creds
+Password: ${PASSWORD}
+EOF
 msg_ok "Configured Koffan"
 
 msg_info "Creating systemd service"
@@ -55,7 +55,6 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 EOF
-
 systemctl enable -q --now koffan
 msg_ok "Created systemd service"
 

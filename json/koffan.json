@@ -1,8 +1,10 @@
 {
   "name": "Koffan",
   "slug": "koffan",
-  "categories": [12],
-  "date_created": "2026-05-21",
+  "categories": [
+    12
+  ],
+  "date_created": "2026-05-25",
   "type": "ct",
   "updateable": true,
   "privileged": false,
@@ -18,7 +20,7 @@
       "config_path": "/opt/koffan/data/.env",
       "resources": {
         "cpu": 1,
-        "ram": 512,
+        "ram": 1024,
         "hdd": 4,
         "os": "Debian",
         "version": "13"

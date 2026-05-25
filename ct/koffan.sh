@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 source <(curl -s https://raw.githubusercontent.com/AminGholizad/ProxmoxVED/main/misc/build.func)
 # Copyright (c) 2021-2026 community-scripts ORG
-# Author: [AminGholizad]
+# Author: (AminGholizad)
 # License: MIT | https://github.com/AminGholizad/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/PanSalut/Koffan
 
 APP="Koffan"
 var_tags="${var_tags:-productivity}"
 var_cpu="${var_cpu:-1}"
-var_ram="${var_ram:-512}"
+var_ram="${var_ram:-1024}"
 var_disk="${var_disk:-4}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
