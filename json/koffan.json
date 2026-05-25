@@ -1,14 +1,12 @@
 {
   "name": "Koffan",
   "slug": "koffan",
-  "categories": [
-    12
-  ],
+  "categories": [12],
   "date_created": "2026-05-21",
   "type": "ct",
   "updateable": true,
   "privileged": false,
-  "interface_port": null,
+  "interface_port": 3000,
   "documentation": null,
   "website": null,
   "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/koffan.webp",
@@ -33,8 +31,8 @@
   },
   "notes": [
     {
-      "text": "Change the default password after first login!",
-      "type": "warning"
+      "text": "Credentials are saved to `~/koffan.creds`.",
+      "type": "info"
     }
   ]
 }

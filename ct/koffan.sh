@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source <(curl -s https://raw.githubusercontent.com/AminGholizad/ProxmoxVED/main/misc/build.func)
 # Copyright (c) 2021-2026 community-scripts ORG
-# Author: Amin Gholizad
+# Author: [AminGholizad]
 # License: MIT | https://github.com/AminGholizad/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/PanSalut/Koffan
 
@@ -35,10 +35,10 @@ function update_script() {
     msg_ok "Stopped Service"
 
     msg_info "Backing up Data"
-    cp -r /opt/koffan/data /opt/koffan_data_backup 2>/dev/null || true
+    cp -r /opt/koffan/data /opt/koffan_data_backup
     msg_ok "Backed up Data"
 
-    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "koffan" "PanSalut/Koffan"
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "koffan" "PanSalut/Koffan" "tarball"
 
     msg_info "Rebuilding Koffan"
     cd /opt/koffan
@@ -46,7 +46,7 @@ function update_script() {
     msg_ok "Rebuild Completed"
 
     msg_info "Restoring Data"
-    cp -r /opt/koffan_data_backup/. /opt/koffan/data/ 2>/dev/null || true
+    cp -r /opt/koffan_data_backup/. /opt/koffan/data/
     rm -rf /opt/koffan_data_backup
     msg_ok "Restored Data"
 
