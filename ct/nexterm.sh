@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVED/main/misc/build.func)
+# Copyright (c) 2021-2026 community-scripts ORG
+# Author: Mathias Wagner
+# License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
+# Source: https://nexterm.dev/
+
+APP="Nexterm"
+var_tags="${var_tags:-server-management}"
+var_cpu="${var_cpu:-2}"
+var_ram="${var_ram:-2048}"
+var_disk="${var_disk:-6}"
+var_os="${var_os:-debian}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-yes}"
+var_unprivileged="${var_unprivileged:-1}"
+
+header_info "$APP"
+variables
+color
+catch_errors
+
+function update_script() {
+  header_info
+  check_container_storage
+  check_container_resources
+
+  if [[ ! -f /opt/nexterm/server/nexterm-server ]]; then
+    msg_error "No ${APP} Installation Found!"
+    exit
+  fi
+
+  case "$(dpkg --print-architecture)" in
+    amd64) NX_ARCH="x64" ;;
+    arm64) NX_ARCH="arm64" ;;
+    *)
+      msg_error "Unsupported architecture"
+      exit 1
+      ;;
+  esac
+
+  ENGINE_UPDATE=0
+  SERVER_UPDATE=0
+  check_for_gh_release "nexterm-engine" "gnmyt/Nexterm" && ENGINE_UPDATE=1
+  check_for_gh_release "nexterm-server" "gnmyt/Nexterm" && SERVER_UPDATE=1
+
+  if [[ $ENGINE_UPDATE -eq 0 && $SERVER_UPDATE -eq 0 ]]; then
+    exit
+  fi
+
+  msg_info "Stopping Services"
+  systemctl stop nexterm-engine nexterm-server
+  msg_ok "Stopped Services"
+
+  if [[ $ENGINE_UPDATE -eq 1 ]]; then
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "nexterm-engine" "gnmyt/Nexterm" "prebuild" "latest" "/opt/nexterm/engine" "nexterm-engine-linux-${NX_ARCH}.tar.gz"
+  fi
+  if [[ $SERVER_UPDATE -eq 1 ]]; then
+    fetch_and_deploy_gh_release "nexterm-server" "gnmyt/Nexterm" "singlefile" "latest" "/opt/nexterm/server" "nexterm-server-linux-${NX_ARCH}"
+  fi
+
+  msg_info "Starting Services"
+  systemctl start nexterm-server
+  systemctl start nexterm-engine
+  msg_ok "Started Services"
+  msg_ok "Updated successfully!"
+  exit
+}
+
+start
+build_container
+description
+
+msg_ok "Completed Successfully!\n"
+echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
+echo -e "${INFO}${YW} Access it using the following URL:${CL}"
+echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:6989${CL}"
