@@ -43,7 +43,7 @@ function update_script() {
     msg_info "Rebuilding Koffan"
     cd /opt/koffan
     go build -o koffan main.go
-    msg_ok "Rebuild Completed"
+    msg_ok "Rebuild Koffan"
 
     msg_info "Restoring Data"
     cp -r /opt/koffan_data_backup/. /opt/koffan/data/
