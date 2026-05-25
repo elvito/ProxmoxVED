@@ -8,7 +8,7 @@
   "type": "ct",
   "updateable": true,
   "privileged": false,
-  "has_arm": true,
+  "has_arm": false,
   "interface_port": 6989,
   "documentation": "https://docs.nexterm.dev/",
   "website": "https://nexterm.dev/",
