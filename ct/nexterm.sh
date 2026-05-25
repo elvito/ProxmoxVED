@@ -60,8 +60,7 @@ function update_script() {
   fi
 
   msg_info "Starting Services"
-  systemctl start nexterm-server
-  systemctl start nexterm-engine
+  systemctl start nexterm-server nexterm-engine
   msg_ok "Started Services"
   msg_ok "Updated successfully!"
   exit
