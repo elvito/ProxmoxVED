@@ -212,7 +212,7 @@ export LIBGUESTFS_BACKEND_SETTINGS=dns=8.8.8.8,1.1.1.1
 WAYDROID_PREINSTALLED="no"
 
 # Ubuntu ships binder_linux only in linux-modules-extra-generic
-BASE_PKGS="curl,ca-certificates,qemu-guest-agent"
+BASE_PKGS="curl,ca-certificates,qemu-guest-agent,weston"
 [[ "$OS_CHOICE" == "ubuntu2404" ]] && BASE_PKGS="${BASE_PKGS},linux-modules-extra-generic"
 
 msg_info "Installing prerequisites in image"
@@ -264,7 +264,7 @@ exec >> /var/log/waydroid-install.log 2>&1
 echo \"[\$(date)] Starting Waydroid installation\"
 for i in \$(seq 1 30); do ping -c1 8.8.8.8 >/dev/null 2>&1 && break; sleep 2; done
 apt-get update
-apt-get install -y curl ca-certificates qemu-guest-agent
+apt-get install -y curl ca-certificates qemu-guest-agent weston
 # Install binder_linux kernel module for Ubuntu
 if grep -qi ubuntu /etc/os-release; then
   apt-get install -y linux-modules-extra-\$(uname -r) || apt-get install -y linux-modules-extra-generic
@@ -345,12 +345,16 @@ if [ "$WAYDROID_PREINSTALLED" = "yes" ]; then
   ┌─────────────────────────────────────────────────────────────────────────┐
   │                    WAYDROID IS PRE-INSTALLED                            │
   ├─────────────────────────────────────────────────────────────────────────┤
-  │  Waydroid is already installed in the VM image.                         │
-  │  After first boot, connect to the VM and run ONE final step:            │
+  │  Waydroid + Weston are already installed in the VM image.               │
+  │  After first boot, connect to the VM and run:                           │
   │                                                                         │
-  │       sudo modprobe binder_linux                                        │
-  │       sudo waydroid init                                                │
-  │       sudo systemctl start waydroid-container                           │
+  │    1. Initialize (once):                                                │
+  │         sudo waydroid init                                              │
+  │         sudo systemctl start waydroid-container                         │
+  │                                                                         │
+  │    2. Start Wayland compositor + Android UI (each session):             │
+  │         weston --backend=headless &                                     │
+  │         WAYLAND_DISPLAY=wayland-0 waydroid show-full-ui                 │
   │                                                                         │
   │  NOTE: GPU acceleration requires VirtIO GPU or passthrough setup.       │
   │  More info: https://docs.waydro.id/                                     │
@@ -363,14 +367,19 @@ else
   ┌─────────────────────────────────────────────────────────────────────────┐
   │               WAYDROID FIRST-BOOT INSTALL ACTIVE                        │
   ├─────────────────────────────────────────────────────────────────────────┤
-  │  Waydroid will be installed automatically on first boot.                │
+  │  Waydroid + Weston will be installed automatically on first boot.       │
   │  Monitor progress inside the VM with:                                   │
   │       sudo journalctl -u waydroid-firstboot -f                         │
   │       sudo tail -f /var/log/waydroid-install.log                       │
   │                                                                         │
-  │  After the service completes, run ONE final step:                       │
-  │       sudo waydroid init                                                │
-  │       sudo systemctl start waydroid-container                           │
+  │  After the service completes:                                           │
+  │    1. Initialize (once):                                                │
+  │         sudo waydroid init                                              │
+  │         sudo systemctl start waydroid-container                         │
+  │                                                                         │
+  │    2. Start Wayland compositor + Android UI (each session):             │
+  │         weston --backend=headless &                                     │
+  │         WAYLAND_DISPLAY=wayland-0 waydroid show-full-ui                 │
   │                                                                         │
   │  NOTE: GPU acceleration requires VirtIO GPU or passthrough setup.       │
   │  More info: https://docs.waydro.id/                                     │

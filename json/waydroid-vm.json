@@ -38,7 +38,7 @@
             "type": "info"
         },
         {
-            "text": "Waydroid is pre-installed into the image before the VM boots. After first boot, run: sudo waydroid init && sudo systemctl start waydroid-container",
+            "text": "Waydroid + Weston (Wayland compositor) are pre-installed. After first boot run: sudo waydroid init && sudo systemctl start waydroid-container. Then start the UI with: weston --backend=headless & && WAYLAND_DISPLAY=wayland-0 waydroid show-full-ui",
             "type": "info"
         },
         {
