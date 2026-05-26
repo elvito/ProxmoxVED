@@ -222,7 +222,7 @@ ubuntu2404)
   ;;
 debian13)
   msg_info "Retrieving the URL for the Debian 13 Cloud Image"
-  URL="https://cloud.debian.org/images/cloud/trixie/daily/latest/debian-13-generic-amd64.qcow2"
+  URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2"
   ;;
 esac
 sleep 2
