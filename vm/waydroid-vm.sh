@@ -30,13 +30,11 @@ METHOD=""
 NSAPP="waydroid-vm"
 THIN="discard=on,ssd=1,"
 USE_CLOUD_INIT="no"
-SNIPPETS_STOR=""
-SNIPPETS_DIR=""
 
 # OS selection defaults
 OS_CHOICE="ubuntu2404"
 OS_LABEL="Ubuntu 24.04 LTS (Noble Numbat)"
-WAYDROID_DISTRO="noble"
+OS_CODENAME="noble"
 
 header_info
 echo -e "\n Loading..."
@@ -65,7 +63,7 @@ ssh_check
 # ---------------------------------------------------------------------------
 # OS Selection
 # ---------------------------------------------------------------------------
-function prompt_os_choice() {
+function select_os() {
   local choice
   if choice=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "OS SELECTION" \
     --radiolist "Choose the base operating system:" --cancel-button Exit-Script 12 68 2 \
@@ -76,11 +74,11 @@ function prompt_os_choice() {
     case "$OS_CHOICE" in
     ubuntu2404)
       OS_LABEL="Ubuntu 24.04 LTS (Noble Numbat)"
-      WAYDROID_DISTRO="noble"
+      OS_CODENAME="noble"
       ;;
     debian13)
       OS_LABEL="Debian 13 (Trixie)"
-      WAYDROID_DISTRO="trixie"
+      OS_CODENAME="trixie"
       ;;
     esac
     echo -e "${OS}${BOLD}${DGN}Base OS: ${BGN}${OS_LABEL}${CL}"
@@ -89,50 +87,8 @@ function prompt_os_choice() {
   fi
 }
 
-prompt_os_choice
+select_os
 vm_prompt_cloud_init "ubuntu"
-
-# ---------------------------------------------------------------------------
-# Find snippets-capable storage for cicustom vendor-data
-# ---------------------------------------------------------------------------
-function find_snippets_storage() {
-  local stor path
-  stor=$(awk '
-    /^dir:/ { cur=$2 }
-    /^nfs:/ { cur=$2 }
-    /^btrfs:/ { cur=$2 }
-    cur && /content/ && /snippets/ { print cur; exit }
-  ' /etc/pve/storage.cfg 2>/dev/null)
-  [[ -z "$stor" ]] && return 1
-
-  path=$(awk -v s="$stor" '
-    $0 ~ "^(dir|nfs|btrfs): " s { found=1; next }
-    found && /^\tpath/ { print $2; exit }
-    found && /^[a-z]/ { exit }
-  ' /etc/pve/storage.cfg 2>/dev/null)
-  path="${path:-/var/lib/vz}"
-
-  SNIPPETS_STOR="$stor"
-  SNIPPETS_DIR="${path}/snippets"
-  mkdir -p "$SNIPPETS_DIR"
-  return 0
-}
-
-# ---------------------------------------------------------------------------
-# Write cloud-init vendor-data snippet for Waydroid installation
-# ---------------------------------------------------------------------------
-function write_waydroid_vendor_data() {
-  local distro="$1"
-  cat >"${SNIPPETS_DIR}/waydroid-${VMID}-vendor.yaml" <<EOF
-#cloud-config
-runcmd:
-  - modprobe binder_linux devices=binder,hwbinder,vndbinder
-  - echo 'binder_linux' | tee -a /etc/modules
-  - curl -fsSL https://repo.waydro.id | bash -s ${distro}
-  - apt-get install -y waydroid
-  - systemctl enable --now waydroid-container
-EOF
-}
 
 function default_settings() {
   VMID=$(get_valid_nextid)
@@ -213,24 +169,128 @@ vm_define_disk_references 2
 DISK_IMPORT="-format ${DISK_IMPORT_FORMAT}"
 
 # ---------------------------------------------------------------------------
-# Download cloud image based on selected OS
+# Prerequisites: libguestfs-tools for virt-customize
+# ---------------------------------------------------------------------------
+if ! command -v virt-customize &>/dev/null; then
+  msg_info "Installing libguestfs-tools"
+  $STD apt update
+  $STD apt install -y libguestfs-tools lsb-release
+  msg_ok "Installed libguestfs-tools"
+fi
+
+# ---------------------------------------------------------------------------
+# Download cloud image (cached)
 # ---------------------------------------------------------------------------
 case "$OS_CHOICE" in
-ubuntu2404)
-  msg_info "Retrieving the URL for the Ubuntu 24.04 Cloud Image"
-  URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
-  ;;
-debian13)
-  msg_info "Retrieving the URL for the Debian 13 Cloud Image"
-  URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2"
-  ;;
+ubuntu2404) URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img" ;;
+debian13) URL="https://cloud.debian.org/images/cloud/trixie/daily/latest/debian-13-generic-amd64.qcow2" ;;
 esac
+
+msg_info "Retrieving the URL for the ${OS_LABEL} Cloud Image"
 sleep 2
 msg_ok "${CL}${BL}${URL}${CL}"
-curl -f#SL -o "$(basename "$URL")" "$URL"
-echo -en "\e[1A\e[0K"
-FILE="$(basename "$URL")"
-msg_ok "Downloaded ${CL}${BL}${FILE}${CL}"
+
+CACHE_DIR="/var/lib/vz/template/cache"
+CACHE_FILE="${CACHE_DIR}/$(basename "$URL")"
+mkdir -p "$CACHE_DIR"
+
+if [[ ! -s "$CACHE_FILE" ]]; then
+  curl -f#SL -o "$CACHE_FILE" "$URL"
+  echo -en "\e[1A\e[0K"
+  msg_ok "Downloaded ${CL}${BL}$(basename "$CACHE_FILE")${CL}"
+else
+  msg_ok "Using cached image ${CL}${BL}$(basename "$CACHE_FILE")${CL}"
+fi
+
+# ---------------------------------------------------------------------------
+# Customize disk image with Waydroid pre-installed (offline via virt-customize)
+# ---------------------------------------------------------------------------
+WORK_FILE=$(mktemp --suffix=.qcow2)
+cp "$CACHE_FILE" "$WORK_FILE"
+
+export LIBGUESTFS_BACKEND_SETTINGS=dns=8.8.8.8,1.1.1.1
+WAYDROID_PREINSTALLED="no"
+
+msg_info "Installing prerequisites in image"
+if virt-customize -q -a "$WORK_FILE" \
+  --install curl,ca-certificates,qemu-guest-agent >/dev/null 2>&1; then
+  msg_ok "Installed prerequisites"
+else
+  msg_warn "Package pre-install failed — will retry on first boot"
+fi
+
+msg_info "Installing Waydroid in image (Patience)"
+if virt-customize -q -a "$WORK_FILE" \
+  --run-command "curl -fsSL https://repo.waydro.id | bash -s ${OS_CODENAME}" >/dev/null 2>&1 &&
+  virt-customize -q -a "$WORK_FILE" \
+    --run-command "apt-get install -y waydroid" >/dev/null 2>&1 &&
+  virt-customize -q -a "$WORK_FILE" \
+    --run-command "systemctl enable waydroid-container" >/dev/null 2>&1; then
+  WAYDROID_PREINSTALLED="yes"
+  msg_ok "Installed Waydroid"
+else
+  msg_warn "Waydroid pre-install failed — will install on first boot via systemd service"
+fi
+
+msg_info "Configuring binder kernel module"
+virt-customize -q -a "$WORK_FILE" \
+  --run-command "echo 'binder_linux' >> /etc/modules" >/dev/null 2>&1 || true
+virt-customize -q -a "$WORK_FILE" \
+  --run-command "echo 'options binder_linux devices=binder,hwbinder,vndbinder' > /etc/modprobe.d/waydroid.conf" >/dev/null 2>&1 || true
+msg_ok "Configured binder kernel module"
+
+msg_info "Finalizing image"
+virt-customize -q -a "$WORK_FILE" --hostname "${HN}" >/dev/null 2>&1 || true
+virt-customize -q -a "$WORK_FILE" --run-command "truncate -s 0 /etc/machine-id" >/dev/null 2>&1 || true
+virt-customize -q -a "$WORK_FILE" --run-command "rm -f /var/lib/dbus/machine-id" >/dev/null 2>&1 || true
+if [ "$USE_CLOUD_INIT" = "yes" ]; then
+  virt-customize -q -a "$WORK_FILE" \
+    --run-command "sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config" >/dev/null 2>&1 || true
+  virt-customize -q -a "$WORK_FILE" \
+    --run-command "sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config" >/dev/null 2>&1 || true
+fi
+msg_ok "Finalized image"
+
+# Fallback: write a first-boot systemd service in case virt-customize failed
+if [ "$WAYDROID_PREINSTALLED" = "no" ]; then
+  msg_info "Writing first-boot Waydroid install service (fallback)"
+  virt-customize -q -a "$WORK_FILE" --run-command "cat > /usr/local/bin/waydroid-firstboot.sh << 'FSCRIPT'
+#!/bin/bash
+exec >> /var/log/waydroid-install.log 2>&1
+echo \"[\$(date)] Starting Waydroid installation\"
+for i in \$(seq 1 30); do ping -c1 8.8.8.8 >/dev/null 2>&1 && break; sleep 2; done
+apt-get update
+apt-get install -y curl ca-certificates qemu-guest-agent
+curl -fsSL https://repo.waydro.id | bash -s ${OS_CODENAME}
+apt-get install -y waydroid
+echo 'binder_linux' >> /etc/modules
+echo 'options binder_linux devices=binder,hwbinder,vndbinder' > /etc/modprobe.d/waydroid.conf
+systemctl enable --now waydroid-container
+systemctl disable waydroid-firstboot.service
+echo \"[\$(date)] Waydroid installation complete\"
+FSCRIPT
+chmod +x /usr/local/bin/waydroid-firstboot.sh" >/dev/null 2>&1 || true
+
+  virt-customize -q -a "$WORK_FILE" --run-command "cat > /etc/systemd/system/waydroid-firstboot.service << 'FSVC'
+[Unit]
+Description=Waydroid First Boot Installation
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=!/var/log/waydroid-install.log
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/waydroid-firstboot.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+FSVC
+systemctl enable waydroid-firstboot.service" >/dev/null 2>&1 || true
+  msg_ok "Wrote first-boot fallback service"
+fi
+
+FILE="$WORK_FILE"
 
 msg_info "Creating a ${OS_LABEL} Waydroid VM"
 qm create $VMID -agent 1${MACHINE} -tablet 0 -localtime 1 -bios ovmf${CPU_TYPE} -cores $CORE_COUNT -memory $RAM_SIZE \
@@ -247,27 +307,18 @@ set_description
 msg_info "Resizing disk to $DISK_SIZE"
 qm resize $VMID scsi0 ${DISK_SIZE} >/dev/null
 
+rm -f "$WORK_FILE"
+
 if [ "$USE_CLOUD_INIT" = "yes" ] && declare -f setup_cloud_init >/dev/null 2>&1; then
   case "$OS_CHOICE" in
   ubuntu2404) setup_cloud_init "$VMID" "$STORAGE" "$HN" "yes" "${CLOUDINIT_USER:-ubuntu}" "${CLOUDINIT_NETWORK_MODE:-dhcp}" "${CLOUDINIT_IP:-}" "${CLOUDINIT_GW:-}" "${CLOUDINIT_DNS:-${CLOUDINIT_DNS_SERVERS:-1.1.1.1 8.8.8.8}}" ;;
   debian13) setup_cloud_init "$VMID" "$STORAGE" "$HN" "yes" "${CLOUDINIT_USER:-debian}" "${CLOUDINIT_NETWORK_MODE:-dhcp}" "${CLOUDINIT_IP:-}" "${CLOUDINIT_GW:-}" "${CLOUDINIT_DNS:-${CLOUDINIT_DNS_SERVERS:-1.1.1.1 8.8.8.8}}" ;;
   esac
 else
-  # Even without interactive cloud-init config, attach a CI drive for network (DHCP)
+  # Attach cloud-init drive for basic DHCP networking even without interactive CI config
   qm set $VMID --ide2 "${STORAGE}:cloudinit" >/dev/null 2>&1 ||
     qm set $VMID --scsi1 "${STORAGE}:cloudinit" >/dev/null 2>&1 || true
   qm set $VMID --ipconfig0 "ip=dhcp" >/dev/null 2>&1 || true
-fi
-
-# Inject Waydroid auto-install via cicustom vendor-data (runs on first boot)
-msg_info "Setting up Waydroid auto-install via cloud-init"
-if find_snippets_storage; then
-  write_waydroid_vendor_data "$WAYDROID_DISTRO"
-  qm set $VMID --cicustom "vendor=${SNIPPETS_STOR}:snippets/waydroid-${VMID}-vendor.yaml" >/dev/null
-  qm cloudinit update $VMID >/dev/null 2>&1 || true
-  msg_ok "Waydroid will be installed automatically on first boot"
-else
-  msg_warn "No snippets-capable storage found — Waydroid must be installed manually after boot"
 fi
 
 msg_ok "Created a ${OS_LABEL} Waydroid VM ${CL}${BL}(${HN})"
@@ -280,19 +331,17 @@ fi
 post_update_to_api "done" "none"
 msg_ok "Completed successfully!\n"
 
-if [[ -n "$SNIPPETS_STOR" ]]; then
+if [ "$WAYDROID_PREINSTALLED" = "yes" ]; then
   cat <<INSTRUCTIONS
 
   ┌─────────────────────────────────────────────────────────────────────────┐
-  │                    WAYDROID AUTO-INSTALL ACTIVE                         │
+  │                    WAYDROID IS PRE-INSTALLED                            │
   ├─────────────────────────────────────────────────────────────────────────┤
-  │  Waydroid will be installed automatically on first boot via cloud-init. │
-  │  This takes a few minutes. Check progress inside the VM with:           │
-  │       sudo cloud-init status --wait                                     │
-  │       sudo journalctl -u cloud-init -f                                  │
+  │  Waydroid is already installed in the VM image.                         │
+  │  After first boot, connect to the VM and run ONE final step:            │
   │                                                                         │
-  │  After cloud-init finishes, initialize Waydroid (once, as root):        │
-  │       sudo waydroid init                                                 │
+  │       sudo modprobe binder_linux                                        │
+  │       sudo waydroid init                                                │
   │       sudo systemctl start waydroid-container                           │
   │                                                                         │
   │  NOTE: GPU acceleration requires VirtIO GPU or passthrough setup.       │
@@ -304,19 +353,14 @@ else
   cat <<INSTRUCTIONS
 
   ┌─────────────────────────────────────────────────────────────────────────┐
-  │              WAYDROID MANUAL POST-INSTALL STEPS                         │
+  │               WAYDROID FIRST-BOOT INSTALL ACTIVE                        │
   ├─────────────────────────────────────────────────────────────────────────┤
-  │  No snippets storage found. After the VM has booted, run manually:      │
+  │  Waydroid will be installed automatically on first boot.                │
+  │  Monitor progress inside the VM with:                                   │
+  │       sudo journalctl -u waydroid-firstboot -f                         │
+  │       sudo tail -f /var/log/waydroid-install.log                       │
   │                                                                         │
-  │  1. Load binder kernel module:                                          │
-  │       sudo modprobe binder_linux devices=binder,hwbinder,vndbinder      │
-  │       echo 'binder_linux' | sudo tee -a /etc/modules                   │
-  │                                                                         │
-  │  2. Install Waydroid:                                                   │
-  │       curl -s https://repo.waydro.id | sudo bash                       │
-  │       sudo apt install -y waydroid                                      │
-  │                                                                         │
-  │  3. Initialize Waydroid (requires internet):                            │
+  │  After the service completes, run ONE final step:                       │
   │       sudo waydroid init                                                │
   │       sudo systemctl start waydroid-container                           │
   │                                                                         │

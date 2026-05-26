@@ -38,8 +38,8 @@
             "type": "info"
         },
         {
-            "text": "Waydroid is NOT pre-installed. After first boot, run: curl -s https://repo.waydro.id | bash && apt install -y waydroid",
-            "type": "warning"
+            "text": "Waydroid is pre-installed into the image before the VM boots. After first boot, run: sudo waydroid init && sudo systemctl start waydroid-container",
+            "type": "info"
         },
         {
             "text": "Waydroid requires a running Wayland compositor. For headless setups install 'weston'. GPU acceleration requires VirtIO GPU or GPU passthrough.",
