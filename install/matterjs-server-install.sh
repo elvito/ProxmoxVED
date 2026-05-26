@@ -22,6 +22,16 @@ $STD npm install matter-server
 mkdir -p /var/lib/matterjs-server
 msg_ok "Installed MatterJS-Server"
 
+msg_info "Configuring Network"
+cat <<EOF >/etc/sysctl.d/60-ipv6-ra-rio.conf
+net.ipv6.conf.default.accept_ra_rtr_pref=1
+net.ipv6.conf.default.accept_ra_rt_info_max_plen=128
+net.ipv6.conf.eth0.accept_ra_rtr_pref=1
+net.ipv6.conf.eth0.accept_ra_rt_info_max_plen=128
+EOF
+$STD sysctl -p /etc/sysctl.d/60-ipv6-ra-rio.conf
+msg_ok "Configured Network"
+
 msg_info "Creating Service"
 cat <<EOF >/etc/systemd/system/matterjs-server.service
 [Unit]
