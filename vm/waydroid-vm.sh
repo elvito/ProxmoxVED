@@ -211,9 +211,13 @@ cp "$CACHE_FILE" "$WORK_FILE"
 export LIBGUESTFS_BACKEND_SETTINGS=dns=8.8.8.8,1.1.1.1
 WAYDROID_PREINSTALLED="no"
 
+# Ubuntu ships binder_linux only in linux-modules-extra-generic
+BASE_PKGS="curl,ca-certificates,qemu-guest-agent"
+[[ "$OS_CHOICE" == "ubuntu2404" ]] && BASE_PKGS="${BASE_PKGS},linux-modules-extra-generic"
+
 msg_info "Installing prerequisites in image"
 if virt-customize -q -a "$WORK_FILE" \
-  --install curl,ca-certificates,qemu-guest-agent >/dev/null 2>&1; then
+  --install "$BASE_PKGS" >/dev/null 2>&1; then
   msg_ok "Installed prerequisites"
 else
   msg_warn "Package pre-install failed — will retry on first boot"
@@ -261,6 +265,10 @@ echo \"[\$(date)] Starting Waydroid installation\"
 for i in \$(seq 1 30); do ping -c1 8.8.8.8 >/dev/null 2>&1 && break; sleep 2; done
 apt-get update
 apt-get install -y curl ca-certificates qemu-guest-agent
+# Install binder_linux kernel module for Ubuntu
+if grep -qi ubuntu /etc/os-release; then
+  apt-get install -y linux-modules-extra-\$(uname -r) || apt-get install -y linux-modules-extra-generic
+fi
 curl -fsSL https://repo.waydro.id | bash -s ${OS_CODENAME}
 apt-get install -y waydroid
 echo 'binder_linux' >> /etc/modules
