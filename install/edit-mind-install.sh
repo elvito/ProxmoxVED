@@ -37,7 +37,8 @@ NODE_VERSION="22" setup_nodejs
 UV_PYTHON="3.11" setup_uv
 
 msg_info "Installing pnpm"
-$STD npm install -g pnpm@10
+$STD corepack enable pnpm
+$STD corepack prepare pnpm@10.33.1 --activate
 msg_ok "Installed pnpm"
 
 fetch_and_deploy_gh_release "edit-mind" "IliasHad/edit-mind" "tarball"
