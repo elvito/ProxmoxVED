@@ -18,10 +18,19 @@ $STD apt install -y \
   imagemagick \
   ghostscript \
   potrace \
-  libopenjp2-tools
+  libopenjp2-tools \
+  libegl1 \
+  libwayland-client0 \
+  libwayland-cursor0 \
+  libwayland-egl1 \
+  libxkbcommon0 \
+  libxkbcommon-x11-0 \
+  libxcursor1
 msg_ok "Installed Dependencies"
 
 NODE_VERSION="22" setup_nodejs
+
+fetch_and_deploy_gh_release "caire" "esimov/caire" "prebuild" "latest" "/usr/local/bin" "caire-*-linux-amd64.tar.gz"
 
 msg_info "Enabling pnpm"
 $STD corepack enable
