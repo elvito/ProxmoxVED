@@ -78,10 +78,10 @@ $STD /opt/venv/bin/pip install --no-cache-dir \
 msg_ok "Set up Python Environment"
 
 msg_info "Building Frontend"
-rm -f /opt/bunkerm/package-lock.json
 cd /opt/bunkerm/frontend
+rm -f package-lock.json
 export NODE_OPTIONS="--max-old-space-size=4096"
-NODE_ENV=development $STD npm ci
+$STD npm install
 AUTH_SECRET="build-time-placeholder" NEXT_TELEMETRY_DISABLED=1 $STD npm run build
 unset NODE_OPTIONS
 mkdir -p /nextjs
