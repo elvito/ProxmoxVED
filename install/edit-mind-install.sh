@@ -49,9 +49,12 @@ $STD pnpm --filter prisma generate
 msg_ok "Installed Application Dependencies"
 
 msg_info "Building Application"
-$STD pnpm run build:web
+cat <<EOF >/opt/edit-mind/apps/web/.env.production
+VITE_BACKGROUND_JOBS_URL=http://${LOCAL_IP}:4000
+EOF
+$STD pnpm run build:web -- --force
 $STD pnpm rebuild @tailwindcss/oxide rollup onnxruntime-node
-$STD pnpm run build:background-jobs
+$STD pnpm run build:background-jobs -- --force
 msg_ok "Built Application"
 
 msg_info "Setting up Python ML Environment"
@@ -99,7 +102,7 @@ KNOWN_FACES_FILE_LOADED=/opt/edit-mind/.data/.known_faces.json
 BACKGROUND_JOBS_URL=http://127.0.0.1:4000
 NODE_ENV=production
 ANONYMIZED_TELEMETRY=FALSE
-WEB_APP_URL=http://127.0.0.1:3745
+WEB_APP_URL=http://${LOCAL_IP}:3745
 EOF
 mkdir -p /opt/edit-mind/media
 set -a && source /opt/edit-mind/.env && source /opt/edit-mind/.env.system && set +a
