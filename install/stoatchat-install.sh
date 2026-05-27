@@ -182,15 +182,15 @@ server {
 
     client_max_body_size 20M;
 
-    location /api {
-        proxy_pass http://127.0.0.1:14702;
+    location /api/ {
+        proxy_pass http://127.0.0.1:14702/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 
     location /ws {
-        proxy_pass http://127.0.0.1:14703;
+        proxy_pass http://127.0.0.1:14703/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -198,15 +198,15 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
     }
 
-    location /autumn {
-        proxy_pass http://127.0.0.1:14704;
+    location /autumn/ {
+        proxy_pass http://127.0.0.1:14704/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 
-    location /january {
-        proxy_pass http://127.0.0.1:14705;
+    location /january/ {
+        proxy_pass http://127.0.0.1:14705/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -220,7 +220,8 @@ server {
 EOF
 ln -sf /etc/nginx/sites-available/stoatchat /etc/nginx/sites-enabled/stoatchat
 rm -f /etc/nginx/sites-enabled/default
-systemctl enable -q --now nginx
+systemctl enable nginx
+$STD nginx -t && systemctl reload nginx
 msg_ok "Configured Nginx"
 
 msg_info "Creating Backend Services"
