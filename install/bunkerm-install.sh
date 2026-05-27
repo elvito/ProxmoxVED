@@ -78,6 +78,7 @@ $STD /opt/venv/bin/pip install --no-cache-dir \
 msg_ok "Set up Python Environment"
 
 msg_info "Building Frontend"
+rm -f /opt/bunkerm/package-lock.json
 cd /opt/bunkerm/frontend
 export NODE_OPTIONS="--max-old-space-size=4096"
 NODE_ENV=development $STD npm ci
