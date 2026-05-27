@@ -53,9 +53,9 @@ msg_info "Building Application"
 cat <<EOF >/opt/edit-mind/apps/web/.env.production
 VITE_BACKGROUND_JOBS_URL=http://${LOCAL_IP}:4000
 EOF
-$STD pnpm run build:web -- --force
+$STD pnpm run build:web
 $STD pnpm rebuild @tailwindcss/oxide rollup onnxruntime-node
-$STD pnpm run build:background-jobs -- --force
+$STD pnpm run build:background-jobs
 msg_ok "Built Application"
 
 msg_info "Setting up Python ML Environment"
