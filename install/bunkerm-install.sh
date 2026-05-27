@@ -79,9 +79,8 @@ msg_ok "Set up Python Environment"
 
 msg_info "Building Frontend"
 cd /opt/bunkerm/frontend
-[[ -f postcss.config.js ]] && mv postcss.config.js postcss.config.cjs
 export NODE_OPTIONS="--max-old-space-size=4096"
-AUTH_SECRET="build-time-placeholder" NEXT_TELEMETRY_DISABLED=1 $STD npm install
+NODE_ENV=development $STD npm ci
 AUTH_SECRET="build-time-placeholder" NEXT_TELEMETRY_DISABLED=1 $STD npm run build
 unset NODE_OPTIONS
 mkdir -p /nextjs
