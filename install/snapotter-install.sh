@@ -25,10 +25,15 @@ $STD apt install -y \
   libwayland-egl1 \
   libxkbcommon0 \
   libxkbcommon-x11-0 \
-  libxcursor1
+  libxcursor1 \
+  python3 \
+  python3-dev \
+  gcc \
+  g++
 msg_ok "Installed Dependencies"
 
 NODE_VERSION="22" setup_nodejs
+setup_uv
 
 fetch_and_deploy_gh_release "caire" "esimov/caire" "prebuild" "latest" "/usr/local/bin" "caire-*-linux-amd64.tar.gz"
 
@@ -38,6 +43,13 @@ $STD corepack prepare pnpm@9.15.4 --activate
 msg_ok "Enabled pnpm"
 
 fetch_and_deploy_gh_release "snapotter" "snapotter-hq/SnapOtter" "tarball"
+
+msg_info "Setting up Python Environment"
+mkdir -p /opt/snapotter/data/ai/models/rembg
+$STD uv venv --seed /opt/snapotter/data/ai/venv
+BASE_PKGS=$(jq -r '.basePackages | join(" ")' /opt/snapotter/docker/feature-manifest.json)
+$STD uv pip install --python /opt/snapotter/data/ai/venv/bin/python ${BASE_PKGS}
+msg_ok "Set up Python Environment"
 
 msg_info "Building SnapOtter"
 mkdir -p /opt/snapotter/data/files
@@ -54,6 +66,10 @@ NODE_ENV=production
 DB_PATH=/opt/snapotter/data/snapotter.db
 WORKSPACE_PATH=/tmp/snapotter-workspace
 FILES_STORAGE_PATH=/opt/snapotter/data/files
+PYTHON_VENV_PATH=/opt/snapotter/data/ai/venv
+MODELS_PATH=/opt/snapotter/data/ai/models
+DATA_DIR=/opt/snapotter/data
+U2NET_HOME=/opt/snapotter/data/ai/models/rembg
 AUTH_ENABLED=true
 DEFAULT_USERNAME=admin
 DEFAULT_PASSWORD=admin
