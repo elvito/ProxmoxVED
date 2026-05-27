@@ -44,6 +44,11 @@ msg_ok "Enabled pnpm"
 
 fetch_and_deploy_gh_release "snapotter" "snapotter-hq/SnapOtter" "tarball"
 
+msg_info "Configuring Application Paths"
+ln -sf /opt/snapotter /app
+sed -i 's/mediapipe==0.10.21/mediapipe>=0.10.21/' /opt/snapotter/docker/feature-manifest.json
+msg_ok "Configured Application Paths"
+
 msg_info "Setting up Python Environment"
 mkdir -p /opt/snapotter_data/ai/models/rembg
 $STD uv venv --seed /opt/snapotter_data/ai/venv
@@ -69,6 +74,7 @@ FILES_STORAGE_PATH=/opt/snapotter_data/files
 PYTHON_VENV_PATH=/opt/snapotter_data/ai/venv
 MODELS_PATH=/opt/snapotter_data/ai/models
 DATA_DIR=/opt/snapotter_data
+FEATURE_MANIFEST_PATH=/opt/snapotter/docker/feature-manifest.json
 U2NET_HOME=/opt/snapotter_data/ai/models/rembg
 AUTH_ENABLED=true
 DEFAULT_USERNAME=admin

@@ -42,6 +42,7 @@ function update_script() {
     $STD npm pkg delete scripts.prepare
     $STD pnpm install --frozen-lockfile
     $STD pnpm --filter @snapotter/web build
+    sed -i 's/mediapipe==0.10.21/mediapipe>=0.10.21/' /opt/snapotter/docker/feature-manifest.json
     msg_ok "Updated SnapOtter"
 
     msg_info "Starting Service"
