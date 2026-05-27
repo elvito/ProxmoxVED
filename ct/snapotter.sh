@@ -35,21 +35,12 @@ function update_script() {
     systemctl stop snapotter
     msg_ok "Stopped Service"
 
-    msg_info "Backing up Data"
-    cp -r /opt/snapotter/data /opt/snapotter_data_backup
-    msg_ok "Backed up Data"
-
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "snapotter" "snapotter-hq/SnapOtter" "tarball"
 
     cd /opt/snapotter
     $STD npm pkg delete scripts.prepare
     $STD pnpm install --frozen-lockfile
     $STD pnpm --filter @snapotter/web build
-
-    msg_info "Restoring Data"
-    cp -r /opt/snapotter_data_backup/. /opt/snapotter/data
-    rm -rf /opt/snapotter_data_backup
-    msg_ok "Restored Data"
 
     msg_info "Starting Service"
     systemctl start snapotter

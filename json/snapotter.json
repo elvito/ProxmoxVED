@@ -17,7 +17,7 @@
         {
             "type": "default",
             "script": "ct/snapotter.sh",
-            "config_path": "/opt/snapotter/.env",
+            "config_path": "/opt/snapotter_data/.env",
             "resources": {
                 "cpu": 2,
                 "ram": 2048,

@@ -45,14 +45,14 @@ msg_ok "Enabled pnpm"
 fetch_and_deploy_gh_release "snapotter" "snapotter-hq/SnapOtter" "tarball"
 
 msg_info "Setting up Python Environment"
-mkdir -p /opt/snapotter/data/ai/models/rembg
-$STD uv venv --seed /opt/snapotter/data/ai/venv
+mkdir -p /opt/snapotter_data/ai/models/rembg
+$STD uv venv --seed /opt/snapotter_data/ai/venv
 BASE_PKGS=$(jq -r '.basePackages | join(" ")' /opt/snapotter/docker/feature-manifest.json)
-$STD uv pip install --python /opt/snapotter/data/ai/venv/bin/python ${BASE_PKGS}
+$STD uv pip install --python /opt/snapotter_data/ai/venv/bin/python ${BASE_PKGS}
 msg_ok "Set up Python Environment"
 
 msg_info "Building SnapOtter"
-mkdir -p /opt/snapotter/data/files
+mkdir -p /opt/snapotter_data/files
 cd /opt/snapotter
 $STD npm pkg delete scripts.prepare
 $STD pnpm install --frozen-lockfile
@@ -60,16 +60,16 @@ $STD pnpm --filter @snapotter/web build
 msg_ok "Built SnapOtter"
 
 msg_info "Configuring SnapOtter"
-cat <<EOF >/opt/snapotter/.env
+cat <<EOF >/opt/snapotter_data/.env
 PORT=1349
 NODE_ENV=production
-DB_PATH=/opt/snapotter/data/snapotter.db
+DB_PATH=/opt/snapotter_data/snapotter.db
 WORKSPACE_PATH=/tmp/snapotter-workspace
-FILES_STORAGE_PATH=/opt/snapotter/data/files
-PYTHON_VENV_PATH=/opt/snapotter/data/ai/venv
-MODELS_PATH=/opt/snapotter/data/ai/models
-DATA_DIR=/opt/snapotter/data
-U2NET_HOME=/opt/snapotter/data/ai/models/rembg
+FILES_STORAGE_PATH=/opt/snapotter_data/files
+PYTHON_VENV_PATH=/opt/snapotter_data/ai/venv
+MODELS_PATH=/opt/snapotter_data/ai/models
+DATA_DIR=/opt/snapotter_data
+U2NET_HOME=/opt/snapotter_data/ai/models/rembg
 AUTH_ENABLED=true
 DEFAULT_USERNAME=admin
 DEFAULT_PASSWORD=admin
@@ -92,7 +92,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/snapotter
-EnvironmentFile=/opt/snapotter/.env
+EnvironmentFile=/opt/snapotter_data/.env
 ExecStart=${PNPM_BIN} --filter @snapotter/api run start
 Restart=on-failure
 RestartSec=5
