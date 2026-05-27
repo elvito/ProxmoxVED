@@ -37,10 +37,12 @@ function update_script() {
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "snapotter" "snapotter-hq/SnapOtter" "tarball"
 
+    msg_info "Updating SnapOtter"
     cd /opt/snapotter
     $STD npm pkg delete scripts.prepare
     $STD pnpm install --frozen-lockfile
     $STD pnpm --filter @snapotter/web build
+    msg_ok "Updated SnapOtter"
 
     msg_info "Starting Service"
     systemctl start snapotter
