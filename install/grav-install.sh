@@ -14,7 +14,7 @@ setting_up_container
 network_check
 update_os
 
-# Installing Dependencies with the 3 core dependencies (curl;sudo;mc)
+# Installing Dependencies with the 3 core dependencies (curl;logrotate;nginx)
 msg_info "Installing Dependencies"
 $STD apt-get install -y \
   nginx \
@@ -32,24 +32,24 @@ msg_ok "PHP installed"
 # Setup App
 msg_info "Setup ${APPLICATION}"
 RELEASE=$(curl -s "https://api.github.com/repos/getgrav/grav/releases/latest" | grep '"tag_name"' | awk -F'"' '{print $4}')
-curl -fsSL "https://getgrav.org/download/core/grav-admin/latest" -o /tmp/grav-admin.zip                      
-unzip -q /tmp/grav-admin.zip -d /tmp/                 
-mv /tmp/grav-admin /opt/${APPLICATION,,}                                                                     
+curl -fsSL "https://getgrav.org/download/core/grav-admin/latest" -o /tmp/grav-admin.zip
+unzip -q /tmp/grav-admin.zip -d /tmp/
+mv /tmp/grav-admin /opt/${APPLICATION,,}
 chown -R www-data:www-data /opt/${APPLICATION,,}
-find /opt/${APPLICATION,,} -type f -exec chmod 664 {} \;                                                     
+find /opt/${APPLICATION,,} -type f -exec chmod 664 {} \;
 find /opt/${APPLICATION,,} -type d -exec chmod 775 {} \;
-find /opt/${APPLICATION,,}/bin -type f -exec chmod 775 {} \;                                                 
-echo "${RELEASE}" >/opt/${APPLICATION}_version.txt    
+find /opt/${APPLICATION,,}/bin -type f -exec chmod 775 {} \;
+echo "${RELEASE}" >/opt/${APPLICATION}_version.txt
 msg_ok "Setup ${APPLICATION}"
 
-# Configuring Nginx                                                                                                                                                                                       21:22:38 [27/101]
-msg_info "Configuring Nginx"                                                                                 
+# Configuring Nginx
+msg_info "Configuring Nginx"
 PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')
-rm -f /etc/nginx/sites-enabled/default                                                                       
+rm -f /etc/nginx/sites-enabled/default
 cat <<EOF >/etc/nginx/sites-available/${APPLICATION,,}
-server {                                                                                                     
+server {
     listen 80;
-    server_name _;                                                                                           
+    server_name _;
     root /opt/${APPLICATION,,};
     index index.html index.htm index.php;
 
@@ -131,6 +131,7 @@ msg_ok "Configured Nginx"
 
 motd_ssh
 customize
+cleanup_lxc
 
 # Cleanup
 msg_info "Cleaning up"
