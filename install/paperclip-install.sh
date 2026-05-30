@@ -51,6 +51,7 @@ HOST=0.0.0.0
 PORT=3100
 SERVE_UI=true
 PAPERCLIP_HOME=/opt/paperclip-data
+PAPERCLIP_CONFIG=/opt/paperclip-data/instances/default/config.json
 PAPERCLIP_INSTANCE_ID=default
 PAPERCLIP_DEPLOYMENT_MODE=authenticated
 PAPERCLIP_DEPLOYMENT_EXPOSURE=private
@@ -72,7 +73,11 @@ for PAPERCLIP_ONBOARD_CMD in \
   "pnpm paperclipai onboard --yes --bind lan" \
   "pnpm paperclipai onboard --yes"; do
   rm -f "$PAPERCLIP_ONBOARD_LOG"
-  setsid bash -c "cd /opt/paperclip-ai && ${PAPERCLIP_ONBOARD_CMD}" >"$PAPERCLIP_ONBOARD_LOG" 2>&1 &
+  setsid env \
+    PAPERCLIP_HOME="/opt/paperclip-data" \
+    PAPERCLIP_CONFIG="/opt/paperclip-data/instances/default/config.json" \
+    bash -c "cd /opt/paperclip-ai && ${PAPERCLIP_ONBOARD_CMD}" \
+    >"$PAPERCLIP_ONBOARD_LOG" 2>&1 &
   PAPERCLIP_ONBOARD_PID=$!
   for _ in {1..60}; do
     if [[ -f /opt/paperclip-data/instances/default/config.json ]]; then
