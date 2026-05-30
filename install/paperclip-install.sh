@@ -17,7 +17,6 @@ msg_info "Installing Dependencies"
 $STD apt install -y \
   build-essential \
   git \
-  python3 \
   ripgrep
 msg_ok "Installed Dependencies"
 
@@ -61,7 +60,7 @@ EOF
 msg_ok "Configured Paperclip"
 
 msg_info "Running Database Migrations"
-set -a && source /opt/paperclip/.env && set +a
+set -a && source /opt/paperclip-ai/.env && set +a
 $STD pnpm db:migrate
 msg_ok "Ran Database Migrations"
 
