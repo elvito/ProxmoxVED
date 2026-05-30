@@ -28,7 +28,7 @@ PG_DB_NAME="paperclip" PG_DB_USER="paperclip" setup_postgresql_db
 fetch_and_deploy_gh_release "paperclip-ai" "paperclipai/paperclip" "tarball"
 
 msg_info "Building Paperclip"
-cd /opt/paperclip
+cd /opt/paperclip-ai
 export HUSKY=0
 export NODE_OPTIONS="--max-old-space-size=8192"
 $STD pnpm install --frozen-lockfile
@@ -66,8 +66,8 @@ $STD pnpm db:migrate
 msg_ok "Ran Database Migrations"
 
 msg_info "Bootstrapping Paperclip"
-PAPERCLIP_ONBOARD_LOG=/opt/paperclip/paperclip-onboard.log
-PAPERCLIP_BOOTSTRAP_LOG=/opt/paperclip/paperclip-bootstrap.log
+PAPERCLIP_ONBOARD_LOG=/opt/paperclip-ai/paperclip-onboard.log
+PAPERCLIP_BOOTSTRAP_LOG=/opt/paperclip-ai/paperclip-bootstrap.log
 
 for PAPERCLIP_ONBOARD_CMD in \
   "pnpm paperclipai onboard --yes --bind lan" \
@@ -134,8 +134,8 @@ Requires=postgresql.service
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/paperclip
-EnvironmentFile=/opt/paperclip/.env
+WorkingDirectory=/opt/paperclip-ai
+EnvironmentFile=/opt/paperclip-ai/.env
 Environment=HOME=/root
 Environment=CODEX_HOME=/root/.codex
 Environment=PATH=/root/.local/bin:/usr/local/bin:/usr/bin:/bin
