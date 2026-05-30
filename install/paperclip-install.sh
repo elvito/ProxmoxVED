@@ -45,7 +45,7 @@ msg_info "Configuring Paperclip"
 mkdir -p /opt/paperclip-data
 mkdir -p /root/.claude /root/.codex
 BETTER_AUTH_SECRET=$(openssl rand -hex 32)
-cat <<EOF >/opt/paperclip/.env
+cat <<EOF >/opt/paperclip-ai/.env
 DATABASE_URL=postgresql://${PG_DB_USER}:${PG_DB_PASS}@127.0.0.1:5432/${PG_DB_NAME}
 HOST=0.0.0.0
 PORT=3100
