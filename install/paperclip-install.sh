@@ -42,6 +42,9 @@ $STD npm install -g \
 msg_ok "Installed Agent CLIs"
 
 msg_info "Configuring Paperclip"
+PAPERCLIP_HOME="/opt/paperclip-data"
+PAPERCLIP_CONFIG="${PAPERCLIP_HOME}/instances/default/config.json"
+
 mkdir -p /opt/paperclip-data
 mkdir -p /root/.claude /root/.codex
 BETTER_AUTH_SECRET=$(openssl rand -hex 32)
@@ -50,7 +53,8 @@ DATABASE_URL=postgresql://${PG_DB_USER}:${PG_DB_PASS}@127.0.0.1:5432/${PG_DB_NAM
 HOST=0.0.0.0
 PORT=3100
 SERVE_UI=true
-PAPERCLIP_HOME=/opt/paperclip-data
+PAPERCLIP_HOME=${PAPERCLIP_HOME}
+PAPERCLIP_CONFIG=${PAPERCLIP_CONFIG}
 PAPERCLIP_INSTANCE_ID=default
 PAPERCLIP_DEPLOYMENT_MODE=authenticated
 PAPERCLIP_DEPLOYMENT_EXPOSURE=private
@@ -72,10 +76,14 @@ for PAPERCLIP_ONBOARD_CMD in \
   "pnpm paperclipai onboard --yes --bind lan" \
   "pnpm paperclipai onboard --yes"; do
   rm -f "$PAPERCLIP_ONBOARD_LOG"
-  setsid bash -c "cd /opt/paperclip && ${PAPERCLIP_ONBOARD_CMD}" >"$PAPERCLIP_ONBOARD_LOG" 2>&1 &
+  setsid env \
+    PAPERCLIP_HOME="$PAPERCLIP_HOME" \
+    PAPERCLIP_CONFIG="$PAPERCLIP_CONFIG" \
+    bash -c 'cd /opt/paperclip-ai && exec "$@"' _ $PAPERCLIP_ONBOARD_CMD \
+    >"$PAPERCLIP_ONBOARD_LOG" 2>&1 &
   PAPERCLIP_ONBOARD_PID=$!
   for _ in {1..60}; do
-    if [[ -f /opt/paperclip-data/instances/default/config.json ]]; then
+    if [[ -f "$PAPERCLIP_CONFIG" ]]; then
       break
     fi
     if ! kill -0 "$PAPERCLIP_ONBOARD_PID" 2>/dev/null; then
@@ -87,19 +95,19 @@ for PAPERCLIP_ONBOARD_CMD in \
     kill -- -"${PAPERCLIP_ONBOARD_PID}" >/dev/null 2>&1 || true
     wait "$PAPERCLIP_ONBOARD_PID" 2>/dev/null || true
   fi
-  [[ -f /opt/paperclip-data/instances/default/config.json ]] && break
+  [[ -f "$PAPERCLIP_CONFIG" ]] && break
   if ! grep -q "unknown option '--bind'" "$PAPERCLIP_ONBOARD_LOG"; then
     break
   fi
   msg_info "Retrying Paperclip Onboarding"
 done
 
-if [[ ! -f /opt/paperclip-data/instances/default/config.json ]]; then
+if [[ ! -f "$PAPERCLIP_CONFIG" ]]; then
   msg_error "Failed to bootstrap Paperclip"
   exit 1
 fi
 
-if grep -q 'authenticated' /opt/paperclip-data/instances/default/config.json; then
+if grep -q 'authenticated' $PAPERCLIP_CONFIG; then
   pnpm paperclipai auth bootstrap-ceo >"$PAPERCLIP_BOOTSTRAP_LOG" 2>&1 || true
   PAPERCLIP_INVITE_URL=$(awk -F'Invite URL: ' '/Invite URL:/ {print $2; exit}' "$PAPERCLIP_BOOTSTRAP_LOG")
   PAPERCLIP_INVITE_EXPIRY=$(awk -F'Expires: ' '/Expires:/ {print $2; exit}' "$PAPERCLIP_BOOTSTRAP_LOG")
