@@ -77,9 +77,9 @@ for PAPERCLIP_ONBOARD_CMD in \
   "pnpm paperclipai onboard --yes"; do
   rm -f "$PAPERCLIP_ONBOARD_LOG"
   setsid env \
-    PAPERCLIP_HOME="${PAPERCLIP_HOME}" \
-    PAPERCLIP_CONFIG="${PAPERCLIP_CONFIG}" \
-    bash -c "cd /opt/paperclip-ai && ${PAPERCLIP_ONBOARD_CMD}" \
+    PAPERCLIP_HOME="$PAPERCLIP_HOME" \
+    PAPERCLIP_CONFIG="$PAPERCLIP_CONFIG" \
+    bash -c 'cd /opt/paperclip-ai && '"$PAPERCLIP_ONBOARD_CMD" \
     >"$PAPERCLIP_ONBOARD_LOG" 2>&1 &
   PAPERCLIP_ONBOARD_PID=$!
   for _ in {1..60}; do
