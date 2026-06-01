@@ -46,7 +46,8 @@ msg_ok "Built Backend"
 NODE_VERSION="22" setup_nodejs
 
 msg_info "Installing pnpm"
-$STD npm install -g pnpm@10.28.1
+$STD corepack enable pnpm
+$STD corepack prepare pnpm@11.3.0 --activate
 msg_ok "Installed pnpm"
 
 msg_info "Cloning Web Frontend"
@@ -182,11 +183,12 @@ server {
 
     client_max_body_size 20M;
 
-    location /api/ {
+    location /api {
         proxy_pass http://127.0.0.1:14702/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_redirect / /api/;
     }
 
     location /ws {
@@ -198,18 +200,20 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
     }
 
-    location /autumn/ {
+    location /autumn {
         proxy_pass http://127.0.0.1:14704/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_redirect / /autumn/;
     }
 
-    location /january/ {
+    location /january {
         proxy_pass http://127.0.0.1:14705/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_redirect / /january/;
     }
 
     location / {
@@ -229,29 +233,29 @@ for SVC in api events autumn january crond; do
   case $SVC in
   api)
     PORT=14702
-    BIN=delta
+    BIN=revolt-delta
     ;;
   events)
     PORT=14703
-    BIN=bonfire
+    BIN=revolt-bonfire
     ;;
   autumn)
     PORT=14704
-    BIN=autumn
+    BIN=revolt-autumn
     ;;
   january)
     PORT=14705
-    BIN=january
+    BIN=revolt-january
     ;;
   crond)
     PORT=0
-    BIN=crond
+    BIN=revolt-crond
     ;;
   esac
   cat <<EOF >/etc/systemd/system/stoatchat-${SVC}.service
 [Unit]
 Description=Stoatchat ${SVC} service
-After=network.target garage.service
+After=network.target mongod.service redis-server.service rabbitmq-server.service garage.service
 
 [Service]
 Type=simple

@@ -43,7 +43,8 @@ function update_script() {
 
     msg_info "Rebuilding Backend (Patience)"
     cd /opt/stoatchat
-    $STD cargo build --release --bins -j 2
+    CARGO_PROFILE_RELEASE_LTO=thin \
+      $STD cargo build --release --bins -j 2
     msg_ok "Rebuilt Backend"
 
     msg_info "Updating Web Frontend"
