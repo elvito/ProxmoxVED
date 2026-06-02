@@ -54,6 +54,12 @@ function update_script() {
     $STD bun run prisma:generate
     $STD bun run prisma:migrate:deploy
     $STD bun run seed
+    $STD npm install @node-rs/crc32 lightningcss "sharp@0.34.1" "prisma@5.21.1"
+    $STD npm install -g "prisma@5.21.1"
+    $STD npm install "sqlite3@5.1.7"
+    $STD npm install llamaindex "@langchain/community@0.3.40"
+    $STD npm install @libsql/client @libsql/core
+    $STD npx prisma generate
     msg_ok "Updated Application"
 
     msg_info "Updating Service"
@@ -67,7 +73,7 @@ Type=simple
 User=root
 WorkingDirectory=/opt/blinko
 ExecStartPre=/bin/bash -c "mkdir -p /opt/blinko/server/public && cp -r /opt/blinko/dist/public/. /opt/blinko/server/public/"
-ExecStart=/usr/local/bin/bun --env-file /opt/blinko/.env /opt/blinko/dist/index.js
+ExecStart=/usr/bin/node --env-file=/opt/blinko/.env /opt/blinko/dist/index.js
 Restart=on-failure
 RestartSec=5
 

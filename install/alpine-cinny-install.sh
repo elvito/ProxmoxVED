@@ -15,6 +15,7 @@ update_os
 
 msg_info "Installing Dependencies"
 $STD apk add --no-cache \
+  jq \
   nginx
 msg_ok "Installed Dependencies"
 
@@ -48,7 +49,4 @@ msg_ok "Configured Cinny"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apk cache clean
-msg_ok "Cleaned"
+cleanup_lxc

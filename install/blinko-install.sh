@@ -13,6 +13,13 @@ setting_up_container
 network_check
 update_os
 
+msg_info "Installing Dependencies"
+$STD apt install -y \
+  build-essential \
+  libvips-dev \
+  python3
+msg_ok "Installed Dependencies"
+
 NODE_VERSION="22" setup_nodejs
 
 msg_info "Installing Bun"
@@ -44,6 +51,16 @@ $STD bun run prisma:migrate:deploy
 $STD bun run seed
 msg_ok "Set up Blinko"
 
+msg_info "Installing Runtime Dependencies"
+cd /opt/blinko
+$STD npm install @node-rs/crc32 lightningcss "sharp@0.34.1" "prisma@5.21.1"
+$STD npm install -g "prisma@5.21.1"
+$STD npm install "sqlite3@5.1.7"
+$STD npm install llamaindex "@langchain/community@0.3.40"
+$STD npm install @libsql/client @libsql/core
+$STD npx prisma generate
+msg_ok "Installed Runtime Dependencies"
+
 msg_info "Creating Service"
 cat <<EOF >/etc/systemd/system/blinko.service
 [Unit]
@@ -55,7 +72,7 @@ Type=simple
 User=root
 WorkingDirectory=/opt/blinko
 ExecStartPre=/bin/bash -c "mkdir -p /opt/blinko/server/public && cp -r /opt/blinko/dist/public/. /opt/blinko/server/public/"
-ExecStart=/usr/local/bin/bun --env-file /opt/blinko/.env /opt/blinko/dist/index.js
+ExecStart=/usr/bin/node --env-file=/opt/blinko/.env /opt/blinko/dist/index.js
 Restart=on-failure
 RestartSec=5
 
