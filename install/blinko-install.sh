@@ -53,11 +53,11 @@ msg_ok "Set up Blinko"
 
 msg_info "Installing Runtime Dependencies"
 cd /opt/blinko
-$STD npm install @node-rs/crc32 lightningcss "sharp@0.34.1" "prisma@5.21.1"
+$STD npm install --force @node-rs/crc32 lightningcss "sharp@0.34.1" "prisma@5.21.1"
 $STD npm install -g "prisma@5.21.1"
-$STD npm install "sqlite3@5.1.7"
-$STD npm install llamaindex "@langchain/community@0.3.40"
-$STD npm install @libsql/client @libsql/core
+$STD npm install --force "sqlite3@5.1.7"
+$STD npm install --force llamaindex "@langchain/community@0.3.40"
+$STD npm install --force @libsql/client @libsql/core
 $STD npx prisma generate
 msg_ok "Installed Runtime Dependencies"
 
