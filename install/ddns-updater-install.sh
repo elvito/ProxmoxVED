@@ -34,7 +34,8 @@ msg_info "Creating Service"
 cat <<EOF >/etc/systemd/system/ddns-updater.service
 [Unit]
 Description=DDNS-Updater
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
