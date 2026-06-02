@@ -45,6 +45,7 @@ msg_ok "Installed Backend Dependencies"
 
 msg_info "Building Frontend"
 cd /opt/baserow/web-frontend
+export NODE_OPTIONS="--max-old-space-size=6144"
 $STD npm install --legacy-peer-deps
 $STD npm run build
 msg_ok "Built Frontend"
