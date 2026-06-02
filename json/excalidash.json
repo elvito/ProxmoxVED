@@ -40,6 +40,10 @@
         {
             "text": "Create your admin account on first visit at the web UI.",
             "type": "info"
+        },
+        {
+            "text": "The one-time admin setup code can be retrieved with: journalctl -u excalidash | grep -i 'setup\\|bootstrap\\|code'",
+            "type": "info"
         }
     ]
 }
