@@ -30,6 +30,8 @@ function update_script() {
     exit
   fi
 
+  NODE_VERSION="24" setup_nodejs
+  
   CURRENT=$(cat /opt/matter-server/node_modules/matter-server/package.json | grep '"version"' | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
   LATEST=$(npm view matter-server version 2>/dev/null)
   if [[ "$CURRENT" != "$LATEST" ]]; then
