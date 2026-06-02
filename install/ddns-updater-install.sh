@@ -39,7 +39,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do curl -sf --max-time 5 https://1.1.1.1 >/dev/null 2>&1 && break || sleep 2; done'
+ExecStartPre=/bin/bash -c 'for i in \$(seq 1 30); do curl -sf --max-time 5 https://1.1.1.1 >/dev/null 2>&1 && break || sleep 2; done'
 ExecStart=/opt/ddns-updater/ddns-updater
 Environment=DATADIR=/opt/ddns-updater/data
 Environment=LISTENING_ADDRESS=:8000
