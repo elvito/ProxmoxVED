@@ -50,6 +50,10 @@ Link: #
 
 ## 📦 Application Requirements (for new scripts)
 
+> ⚠️ Do not remove this section.
+> It is used by automated PR validation checks.
+> If this PR is not a new script submission, leave the checkboxes unchecked.
+
 > Required for **🆕 New script** submissions.  
 > Pull requests that do not meet these requirements may be closed without review.
 - [ ] The application is **at least 6 months old**
