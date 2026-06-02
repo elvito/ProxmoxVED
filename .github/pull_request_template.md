@@ -16,7 +16,7 @@ Link: #
 
 ---
 
-## arm64 Support (**X** in brackets)
+## 🏗️ arm64 Support (**X** in brackets)
 
 - [ ] **arm64 supported** - Tested and supported on arm64.
 - [ ] **arm64 not tested** - Assumed to work on arm64, but testing has not been done.
