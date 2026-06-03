@@ -44,7 +44,7 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl enable kiwix-serve
+systemctl enable -q kiwix-serve
 msg_ok "Created Service"
 
 motd_ssh
