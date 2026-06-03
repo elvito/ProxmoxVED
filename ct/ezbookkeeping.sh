@@ -45,9 +45,9 @@ function update_script() {
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "ezbookkeeping" "mayswind/ezbookkeeping" "prebuild" "latest" "/opt/ezbookkeeping" "ezbookkeeping-*-linux-amd64.tar.gz"
 
     msg_info "Restoring configuration"
-    mv -f /opt/ezbookkeeping-backup/ezbookkeeping.ini /opt/ezbookkeeping/conf/
-    mv -f /opt/ezbookkeeping-backup/data /opt/ezbookkeeping/data/
-    mv -f /opt/ezbookkeeping-backup/storage /opt/ezbookkeeping/storage/
+    cp -rf /opt/ezbookkeeping-backup/ezbookkeeping.ini /opt/ezbookkeeping/conf/
+    cp -rf /opt/ezbookkeeping-backup/data/. /opt/ezbookkeeping/data/
+    cp -rf /opt/ezbookkeeping-backup/storage/. /opt/ezbookkeeping/storage/
     rm -rf /opt/ezbookkeeping-backup
     msg_ok "Restored configuration"
 
