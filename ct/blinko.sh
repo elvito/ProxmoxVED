@@ -50,6 +50,8 @@ function update_script() {
     cd /opt/blinko
     $STD bun install
     $STD bun run build:web
+    mkdir -p /opt/blinko/dist/public/dist
+    cp -r /opt/blinko/node_modules/vditor/dist/{js,css,images} /opt/blinko/dist/public/dist/
     $STD bun run build:seed
     $STD bun run prisma:generate
     $STD bun run prisma:migrate:deploy
