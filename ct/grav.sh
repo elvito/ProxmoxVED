@@ -5,25 +5,15 @@ source <(curl -s https://raw.githubusercontent.com/rafspiny/ProxmoxVED/main/misc
 # License: MIT | https://github.com/rafspiny/ProxmoxVED/raw/main/LICENSE
 # Source: https://getgrav.org/
 
-# App Default Values
 APP="Grav"
-# Name of the app (e.g. Google, Adventurelog, Apache-Guacamole"
 var_tags="${var_tags:-cms}"
-# Tags for Proxmox VE, maximum 2 pcs., no spaces allowed, separated by a semicolon ; (e.g. database | adblock;dhcp)
 var_cpu="${var_cpu:-1}"
-# Number of cores (1-X) (e.g. 4) - default are 2
 var_ram="${var_ram:-2048}"
-# Amount of used RAM in MB (e.g. 2048 or 4096)
 var_disk="${var_disk:-8}"
-# Amount of used disk space in GB (e.g. 4 or 10)
 var_os="${var_os:-debian}"
-# Default OS (e.g. debian, ubuntu, alpine)
 var_version="${var_version:-13}"
-# Default OS version (e.g. 12 for debian, 24.04 for ubuntu, 3.20 for alpine)
 var_arm64="${var_arm64:-no}"
-# arm64 support status; default to no unless verified
 var_unprivileged="${var_unprivileged:-1}"
-# 1 = unprivileged container, 0 = privileged container
 
 # Internal helper variables
 INSTALLATION_CHECK_PATH="/opt/grav"
@@ -38,14 +28,12 @@ function update_script() {
     check_container_storage
     check_container_resources
 
-    # Check if installation is present | -f for file, -d for folder
     if [[ ! -d [INSTALLATION_CHECK_PATH] ]]; then
         msg_error "No ${APP} Installation Found!"
         exit
     fi
 
     if check_for_gh_release "grav" "getgrav/grav"; then
-        # Creating Backup
         msg_info "Creating Backup"
         tar -czf "/opt/${APP}_backup_$(date +%F).tar.gz" ${INSTALLATION_CHECK_PATH}
         msg_ok "Backup Created"
