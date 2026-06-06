@@ -30,7 +30,7 @@ msg_ok "Setup Grav"
 msg_info "Configuring Nginx"
 PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')
 rm -f /etc/nginx/sites-enabled/default
-cat <<EOF >/etc/nginx/sites-available/grav,,}
+cat <<EOF >/etc/nginx/sites-enabled/grav}
 server {
     listen 80;
     server_name _;
