@@ -5,12 +5,10 @@
 # License: MIT | https://github.com/rafspiny/ProxmoxVED/raw/main/LICENSE
 # Source: https://getgrav.org/
 
-# Import Functions und Setup
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
 verb_ip6
 catch_errors
-set -x
 setting_up_container
 network_check
 update_os
@@ -19,35 +17,20 @@ update_os
 msg_info "Installing Dependencies"
 $STD apt-get install -y \
   nginx \
-  logrotate \
-  curl
+  logrotate
 msg_ok "Installed Dependencies"
 
-# PHP
-msg_info "Setup PHP"
 PHP_VERSION="8.3" PHP_FPM="YES" PHP_MODULES="bcmath,gd,intl,xml,zip,pdo_mysql,mbstring,curl" setup_php
-msg_ok "PHP installed"
 
-# Temp
-
-# Setup App
-msg_info "Setup ${APPLICATION}"
-RELEASE=$(curl -s "https://api.github.com/repos/getgrav/grav/releases/latest" | grep '"tag_name"' | awk -F'"' '{print $4}')
-curl -fsSL "https://github.com/getgrav/grav/releases/download/${RELEASE}/grav-admin-v${RELEASE}.zip" -o /tmp/grav-admin.zip
-unzip -q /tmp/grav-admin.zip -d /tmp/
-mv /tmp/grav-admin /opt/${APPLICATION,,}
+msg_info "Setup Grav"
+fetch_and_deploy_gh_release "grav" "getgrav/grav" "prebuild" "latest" "/opt/grav" "grav-admin-v*zip"
 chown -R www-data:www-data /opt/${APPLICATION,,}
-find /opt/${APPLICATION,,} -type f -exec chmod 664 {} \;
-find /opt/${APPLICATION,,} -type d -exec chmod 775 {} \;
-find /opt/${APPLICATION,,}/bin -type f -exec chmod 775 {} \;
-echo "${RELEASE}" >/opt/${APPLICATION}_version.txt
-msg_ok "Setup ${APPLICATION}"
+msg_ok "Setup Grav"
 
-# Configuring Nginx
 msg_info "Configuring Nginx"
 PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')
 rm -f /etc/nginx/sites-enabled/default
-cat <<EOF >/etc/nginx/sites-available/${APPLICATION,,}
+cat <<EOF >/etc/nginx/sites-available/grav,,}
 server {
     listen 80;
     server_name _;
@@ -112,10 +95,3 @@ msg_ok "Configured Nginx"
 motd_ssh
 customize
 cleanup_lxc
-
-# Cleanup
-msg_info "Cleaning up"
-rm -f /tmp/grav-admin.zip
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
