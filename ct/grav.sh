@@ -40,8 +40,6 @@ function update_script() {
 
         CLEAN_INSTALL=1 fetch_and_deploy_gh_release "grav" "getgrav/grav" "prebuild" "latest" "${INSTALLATION_CHECK_PATH}" "grav-update-v*zip"
         msg_ok "Update Successful"
-    else
-        msg_ok "No update required."
     fi
     exit
 }
