@@ -31,7 +31,7 @@ msg_info "Configuring Nginx"
 PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')
 unlink /etc/nginx/sites-enabled/default
 rm -f /etc/nginx/sites-available/default
-cat <<EOF >/etc/nginx/sites-available/grav}
+cat <<EOF >/etc/nginx/sites-available/grav
 server {
     listen 80;
     server_name _;
