@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVED/main/misc/build.func)
 # Copyright (c) 2021-2026 community-scripts ORG
-# Author: gVNS
+# Author: gVNS (ggfevans)
 # License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/RackulaLives/Rackula
 
@@ -56,14 +56,12 @@ function update_script() {
     chown -R root:root /opt/rackula/frontend
     find /opt/rackula/frontend -type d -exec chmod 755 {} \;
     find /opt/rackula/frontend -type f -exec chmod 644 {} \;
-    chown -R rackula:rackula /opt/rackula/api
-    chown -R rackula:rackula /opt/rackula/data
+    chown -R rackula:rackula /opt/rackula/{api,data}
     chmod 750 /opt/rackula/data
     systemctl daemon-reload
     msg_ok "Updated Configuration"
 
     msg_info "Starting Services"
-    systemctl start rackula-api
     systemctl start nginx rackula-api
     msg_ok "Started Services"
 

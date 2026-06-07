@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright (c) 2021-2026 community-scripts ORG
-# Author: ggfevans
+# Author: gVNS (ggfevans)
 # License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/RackulaLives/Rackula
 
@@ -14,10 +14,7 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apt install -y \
-  nginx \
-  unzip \
-  ca-certificates
+$STD apt install -y nginx
 msg_ok "Installed Dependencies"
 
 msg_info "Creating rackula user"
@@ -27,19 +24,32 @@ fi
 msg_ok "Created rackula user"
 
 msg_info "Installing Bun"
-
-export BUN_INSTALL="/usr/local/bun"
-
-BUN_INSTALLER=$(mktemp)
-curl_with_retry "https://bun.sh/install" "$BUN_INSTALLER"
-$STD bash "$BUN_INSTALLER"
-rm -f "$BUN_INSTALLER"
-if [ ! -x /usr/local/bun/bin/bun ]; then
-  msg_error "Bun installation failed: /usr/local/bun/bin/bun not found or not executable"
+ensure_dependencies unzip
+BUN_TAG=$(get_latest_github_release "oven-sh/bun")
+[ -n "$BUN_TAG" ] || {
+  msg_error "Could not resolve latest Bun release"
   exit 1
-fi
+}
+case "$(uname -m)" in
+  x86_64) grep -q avx2 /proc/cpuinfo && BUN_VARIANT="x64" || BUN_VARIANT="x64-baseline" ;;
+  aarch64) BUN_VARIANT="aarch64" ;;
+  *)
+    msg_error "Unsupported architecture: $(uname -m)"
+    exit 1
+    ;;
+esac
+BUN_TMP=$(mktemp -d)
+curl_with_retry "https://github.com/oven-sh/bun/releases/download/${BUN_TAG}/bun-linux-${BUN_VARIANT}.zip" "$BUN_TMP/bun.zip"
+$STD unzip -o "$BUN_TMP/bun.zip" -d "$BUN_TMP"
+mkdir -p /usr/local/bun/bin
+install -m 755 "$(find "$BUN_TMP" -name bun -type f -executable | head -n1)" /usr/local/bun/bin/bun
+rm -rf "$BUN_TMP"
 ln -sf /usr/local/bun/bin/bun /usr/local/bin/bun
-ln -sf /usr/local/bun/bin/bunx /usr/local/bin/bunx
+ln -sf /usr/local/bun/bin/bun /usr/local/bin/bunx
+[ -x /usr/local/bun/bin/bun ] || {
+  msg_error "Bun installation failed"
+  exit 1
+}
 msg_ok "Installed Bun"
 
 fetch_and_deploy_gh_release "rackula" "RackulaLives/Rackula" "prebuild" "latest" "/opt/rackula" "rackula-lxc-*.tar.gz"
@@ -101,19 +111,15 @@ chmod 640 /etc/nginx/snippets/rackula-api-token.conf
 msg_ok "Generated API write token"
 
 msg_info "Configuring nginx"
-
 cp /opt/rackula/config/nginx.conf /etc/nginx/sites-available/rackula
-
 rm -f /etc/nginx/sites-enabled/default
 ln -sf /etc/nginx/sites-available/rackula /etc/nginx/sites-enabled/rackula
 msg_ok "Configured nginx"
 
 msg_info "Creating Services"
 cp /opt/rackula/config/rackula-api.service /etc/systemd/system/rackula-api.service
-
 mkdir -p /etc/systemd/system/nginx.service.d
 cp /opt/rackula/config/nginx.service.d-override.conf /etc/systemd/system/nginx.service.d/override.conf
-
 systemctl enable -q --now nginx rackula-api
 msg_ok "Created Services"
 
