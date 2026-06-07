@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source <(curl -s https://raw.githubusercontent.com/rafspiny/ProxmoxVED/main/misc/build.func)
 # Copyright (c) 2021-2026 community-scripts ORG
-# Author: Raffaele [rafspiny]
+# Author: Raffaele (rafspiny)
 # License: MIT | https://github.com/rafspiny/ProxmoxVED/raw/main/LICENSE
 # Source: https://getgrav.org/
 
@@ -15,8 +15,6 @@ var_version="${var_version:-13}"
 var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
-# Internal helper variables
-INSTALLATION_CHECK_PATH="/opt/grav"
 
 header_info "$APP"
 variables
@@ -28,17 +26,17 @@ function update_script() {
     check_container_storage
     check_container_resources
 
-    if [[ ! -d [INSTALLATION_CHECK_PATH] ]]; then
+    if [[ ! -d "/opt/grav" ]]; then
         msg_error "No ${APP} Installation Found!"
         exit
     fi
 
     if check_for_gh_release "grav" "getgrav/grav"; then
         msg_info "Creating Backup"
-        tar -czf "/opt/${APP}_backup_$(date +%F).tar.gz" ${INSTALLATION_CHECK_PATH}
+        tar -czf "/opt/grav_backup_$(date +%F).tar.gz" /opt/grav
         msg_ok "Backup Created"
 
-        CLEAN_INSTALL=1 fetch_and_deploy_gh_release "grav" "getgrav/grav" "prebuild" "latest" "${INSTALLATION_CHECK_PATH}" "grav-update-v*zip"
+        CLEAN_INSTALL=1 fetch_and_deploy_gh_release "grav" "getgrav/grav" "prebuild" "latest" "/opt/grav" "grav-update-v*zip"
         msg_ok "Update Successful"
     fi
     exit
