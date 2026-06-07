@@ -75,7 +75,7 @@ server {
     location ~ ^(.+\.php)(.*)$ {
         fastcgi_split_path_info ^(.+\.php)(.*)$;
         if (!-f \$document_root\$fastcgi_script_name) { return 404; }
-        fastcgi_pass ${PHP_FPM_SOCK};
+        fastcgi_pass unix:${PHP_FPM_SOCK};
         fastcgi_index index.php;
         include /etc/nginx/fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
