@@ -32,8 +32,7 @@ function update_script() {
 
   if check_for_gh_release "rackula" "RackulaLives/Rackula"; then
     msg_info "Stopping Services"
-    systemctl stop rackula-api
-    systemctl stop nginx
+    systemctl stop rackula-api nginx
     msg_ok "Stopped Services"
 
     msg_info "Backing up Data"
