@@ -64,7 +64,7 @@ function update_script() {
 
     msg_info "Starting Services"
     systemctl start rackula-api
-    systemctl start nginx
+    systemctl start nginx rackula-api
     msg_ok "Started Services"
 
     msg_info "Verifying Services"
