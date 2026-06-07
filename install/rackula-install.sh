@@ -69,8 +69,7 @@ cp "$SECURITY_HEADERS_SRC" /etc/nginx/snippets/security-headers.conf
 chown -R root:root /opt/rackula/frontend
 find /opt/rackula/frontend -type d -exec chmod 755 {} \;
 find /opt/rackula/frontend -type f -exec chmod 644 {} \;
-chown -R rackula:rackula /opt/rackula/api
-chown -R rackula:rackula /opt/rackula/data
+chown -R rackula:rackula /opt/rackula/{api,data}
 chmod 750 /opt/rackula/data
 msg_ok "Installed Rackula"
 
