@@ -19,12 +19,10 @@ $STD apt install -y \
   logrotate
 msg_ok "Installed Dependencies"
 
-PHP_VERSION="8.3" PHP_FPM="YES" PHP_MODULES="bcmath,gd,intl,xml,zip,pdo_mysql,mbstring,curl" setup_php
+PHP_FPM="YES" setup_php
 
 fetch_and_deploy_gh_release "grav" "getgrav/grav" "prebuild" "latest" "/opt/grav" "grav-admin-v*zip"
-msg_info "Setup Grav"
-chown -R www-data:www-data /opt/${APPLICATION,,}
-msg_ok "Setup Grav"
+chown -R www-data:www-data /opt/grav
 
 msg_info "Configuring Nginx"
 PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')
@@ -35,7 +33,7 @@ cat <<EOF >/etc/nginx/sites-available/grav
 server {
     listen 80;
     server_name _;
-    root /opt/${APPLICATION,,};
+    root /opt/grav;
     index index.html index.htm index.php;
 
     location / {
