@@ -33,7 +33,7 @@ $STD apt install -y \
 msg_ok "Installed Dependencies"
 
 setup_uv
-NODE_VERSION="22" NODE_MODULES="pnpm" setup_nodejs
+NODE_VERSION="22" NODE_MODULE="pnpm" setup_nodejs
 fetch_and_deploy_gh_release "caire" "esimov/caire" "prebuild" "latest" "/usr/local/bin" "caire-*-linux-amd64.tar.gz"
 fetch_and_deploy_gh_release "snapotter" "snapotter-hq/SnapOtter" "prebuild" "latest" "/opt/snapotter" "snapotter-*-linux-amd64.tar.gz"
 
