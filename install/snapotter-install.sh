@@ -41,11 +41,11 @@ msg_info "Setting up Python Environment"
 mkdir -p /opt/snapotter_data/ai/models/rembg
 $STD uv python install 3.11
 $STD uv venv --seed --python 3.11 /opt/snapotter_data/ai/venv
-if [[ -f /opt/snapotter/packages/ai/python/requirements.txt ]]; then
-  $STD uv pip install \
-    --python /opt/snapotter_data/ai/venv/bin/python \
-    -r /opt/snapotter/packages/ai/python/requirements.txt
-fi
+#if [[ -f /opt/snapotter/packages/ai/python/requirements.txt ]]; then
+#  $STD uv pip install \
+#    --python /opt/snapotter_data/ai/venv/bin/python \
+#    -r /opt/snapotter/packages/ai/python/requirements.txt
+#fi
 ln -sfn /opt/snapotter /app
 msg_ok "Set up Python Environment"
 
