@@ -32,18 +32,21 @@ $STD apt install -y \
   g++
 msg_ok "Installed Dependencies"
 
-setup_uv
+PYTHON_VERSION="3.11" setup_uv
 NODE_VERSION="22" NODE_MODULE="pnpm" setup_nodejs
 fetch_and_deploy_gh_release "caire" "esimov/caire" "prebuild" "latest" "/usr/local/bin" "caire-*-linux-amd64.tar.gz"
 fetch_and_deploy_gh_release "snapotter" "snapotter-hq/SnapOtter" "prebuild" "latest" "/opt/snapotter" "snapotter-*-linux-amd64.tar.gz"
 
 msg_info "Setting up Python Environment"
 mkdir -p /opt/snapotter_data/ai/models/rembg
-$STD uv venv --seed /opt/snapotter_data/ai/venv
-#if [[ -f /opt/snapotter/docker/feature-manifest.json ]]; then
-#  BASE_PKGS=$(jq -r '.basePackages | join(" ")' /opt/snapotter/docker/feature-manifest.json)
-#  $STD uv pip install --python /opt/snapotter_data/ai/venv/bin/python ${BASE_PKGS}
-#fi
+$STD uv python install 3.11
+$STD uv venv --seed --python 3.11 /opt/snapotter_data/ai/venv
+if [[ -f /opt/snapotter/packages/ai/python/requirements.txt ]]; then
+  $STD uv pip install \
+    --python /opt/snapotter_data/ai/venv/bin/python \
+    -r /opt/snapotter/packages/ai/python/requirements.txt
+fi
+ln -sfn /opt/snapotter /app
 msg_ok "Set up Python Environment"
 
 msg_info "Configuring SnapOtter"
