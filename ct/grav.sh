@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-source <(curl -s https://raw.githubusercontent.com/rafspiny/ProxmoxVED/main/misc/build.func)
+source <(curl -s https://raw.githubusercontent.com/community-scripts/ProxmoxVED/main/misc/build.func)
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: Raffaele (rafspiny)
-# License: MIT | https://github.com/rafspiny/ProxmoxVED/raw/main/LICENSE
+# License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
 # Source: https://getgrav.org/
 
 APP="Grav"
@@ -37,6 +37,7 @@ function update_script() {
         msg_ok "Backup Created"
 
         CLEAN_INSTALL=1 fetch_and_deploy_gh_release "grav" "getgrav/grav" "prebuild" "latest" "/opt/grav" "grav-update-v*zip"
+	chown -R www-data:www-data /opt/grav
         msg_ok "Update Successful"
     fi
     exit
