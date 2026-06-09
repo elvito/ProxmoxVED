@@ -19,7 +19,31 @@ msg_info "Installing Base Dependencies"
 $STD apt install -y curl wget ca-certificates
 msg_ok "Installed Base Dependencies"
 
-RUST_PROFILE="minimal" RUST_TOOLCHAIN="stable" setup_rust
+msg_info "Installing Proxmox Backup Server"
+
+$STD apt install -y ca-certificates wget
+
+$STD wget -q "https://enterprise.proxmox.com/debian/proxmox-archive-keyring-trixie.gpg" \
+  -O "/usr/share/keyrings/proxmox-archive-keyring.gpg"
+
+cat <<EOF >/etc/apt/sources.list.d/proxmox.sources
+Types: deb
+URIs: http://download.proxmox.com/debian/pbs
+Suites: trixie
+Components: pbs-no-subscription
+Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+EOF
+
+$STD apt update
+
+export DEBIAN_FRONTEND=noninteractive
+export IFUPDOWN2_NO_IFRELOAD=1
+
+$STD apt install -y proxmox-backup-server
+
+msg_ok "Installed Proxmox Backup Server"
+
+#RUST_PROFILE="minimal" RUST_TOOLCHAIN="stable" setup_rust
 
 motd_ssh
 customize
