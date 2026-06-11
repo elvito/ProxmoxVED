@@ -43,7 +43,7 @@ msg_ok "Built Application"
 
 msg_info "Setting up Python Runtime"
 $STD uv venv /opt/bookorbit-python
-uv pip install --python /opt/bookorbit-python/bin/python -r /opt/bookorbit/server/requirements/kobo-cloudscraper.txt
+$STD uv pip install --python /opt/bookorbit-python/bin/python -r /opt/bookorbit/server/requirements/kobo-cloudscraper.txt
 msg_ok "Set up Python Runtime"
 
 msg_info "Configuring Application"
