@@ -22,8 +22,8 @@
             "config_path": "/opt/bookorbit/.env",
             "resources": {
                 "cpu": 2,
-                "ram": 4096,
-                "hdd": 20,
+                "ram": 2048,
+                "hdd": 10,
                 "os": "Debian",
                 "version": "13"
             }
@@ -36,10 +36,6 @@
     "notes": [
         {
             "text": "Open http://YOUR_IP:3000 and finish the initial setup using SETUP_BOOTSTRAP_TOKEN. The token is shown at the end of /root/bookorbit.creds",
-            "type": "info"
-        },
-        {
-            "text": "BookOrbit requires PostgreSQL extensions uuid-ossp, pg_trgm, and vector; this script provisions them automatically.",
             "type": "info"
         },
         {
