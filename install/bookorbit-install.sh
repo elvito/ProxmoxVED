@@ -50,6 +50,10 @@ msg_info "Configuring Application"
 mkdir -p /opt/bookorbit-data/covers /opt/bookorbit-data/book-bucket /opt/bookorbit-books
 JWT_SECRET=$(openssl rand -hex 32)
 SETUP_BOOTSTRAP_TOKEN=$(openssl rand -hex 16)
+cat <<EOF >>~/bookorbit.creds
+
+Setup Token: ${SETUP_BOOTSTRAP_TOKEN}
+EOF
 cat <<EOF >/opt/bookorbit/.env
 NODE_ENV=production
 PORT=3000
