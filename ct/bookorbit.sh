@@ -39,31 +39,24 @@ function update_script() {
     cp /opt/bookorbit/.env /opt/bookorbit.env.bak
     msg_ok "Backed up Configuration"
 
-    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "bookorbit" "bookorbit/bookorbit" "tarball" "latest" "/opt/bookorbit-src"
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "bookorbit" "bookorbit/bookorbit" "tarball"
 
     msg_info "Rebuilding Application"
-    cd /opt/bookorbit-src
+    cd /opt/bookorbit
+    PNPM_VERSION=$(jq -r '.packageManager | ltrimstr("pnpm@")' /opt/bookorbit/package.json)
     $STD corepack enable
-    $STD corepack prepare pnpm@10.32.1 --activate
+    $STD corepack prepare "pnpm@${PNPM_VERSION}" --activate
     $STD pnpm install --frozen-lockfile
     $STD pnpm --filter client run build-only
     $STD pnpm --filter server run build
-    rm -rf /opt/bookorbit-deploy
-    $STD pnpm --filter server deploy --prod --legacy /opt/bookorbit-deploy
-    cp -r /opt/bookorbit-src/server/dist /opt/bookorbit-deploy/dist
-    mkdir -p /opt/bookorbit-deploy/migrations
-    cp -r /opt/bookorbit-src/server/src/db/migrations/. /opt/bookorbit-deploy/migrations/
-    cp -r /opt/bookorbit-src/client/dist /opt/bookorbit-deploy/public
-    cp /opt/bookorbit-src/server/entrypoint.sh /opt/bookorbit-deploy/entrypoint.sh
-    mkdir -p /opt/bookorbit-deploy/bin/kepubify
-    cp -r /opt/bookorbit-src/server/bin/kepubify/. /opt/bookorbit-deploy/bin/kepubify/
-    chmod +x /opt/bookorbit-deploy/entrypoint.sh /opt/bookorbit-deploy/bin/kepubify/*
-    rm -rf /opt/bookorbit
-    mv /opt/bookorbit-deploy /opt/bookorbit
+    cp -r /opt/bookorbit/client/dist /opt/bookorbit/server/public
+    mkdir -p /opt/bookorbit/server/migrations
+    cp -r /opt/bookorbit/server/src/db/migrations/. /opt/bookorbit/server/migrations/
+    chmod +x /opt/bookorbit/server/bin/kepubify/*
     msg_ok "Rebuilt Application"
 
     msg_info "Updating Kobo Python Runtime"
-    /opt/bookorbit-python/bin/python -m pip install --no-cache-dir -r /opt/bookorbit-src/server/requirements/kobo-cloudscraper.txt
+    uv pip install --python /opt/bookorbit-python/bin/python -r /opt/bookorbit/server/requirements/kobo-cloudscraper.txt
     msg_ok "Updated Kobo Python Runtime"
 
     msg_info "Restoring Configuration"
