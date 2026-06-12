@@ -33,15 +33,13 @@ function update_script() {
 
     if check_for_gh_release "grav" "getgrav/grav"; then
         msg_info "Creating Backup"
-	cd /opt/grav
-	bin/grav backup -nq
-	mkdir /tmp/backup
-	mv backup/*.zip /tmp/backup/
-	cd -
+        cd /opt/grav
+        bin/grav backup -nq
+        cd -
         msg_ok "Backup Created"
 
         fetch_and_deploy_gh_release "grav" "getgrav/grav" "prebuild" "latest" "/opt/grav" "grav-update-v*zip"
-	chown -R www-data:www-data /opt/grav
+	      chown -R www-data:www-data /opt/grav
         msg_ok "Update Successful"
     fi
     exit

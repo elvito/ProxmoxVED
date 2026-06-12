@@ -21,7 +21,7 @@ msg_ok "Installed Dependencies"
 
 PHP_FPM="YES" setup_php
 
-fetch_and_deploy_gh_release "grav" "getgrav/grav" "prebuild" "1.7.51" "/opt/grav" "grav-admin-v*zip"
+fetch_and_deploy_gh_release "grav" "getgrav/grav" "prebuild" "latest" "/opt/grav" "grav-admin-v*zip"
 chown -R www-data:www-data /opt/grav
 
 msg_info "Configuring Nginx"
