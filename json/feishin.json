@@ -35,11 +35,7 @@
     },
     "notes": [
         {
-            "text": "Feishin is a client only. Configure your music backend URL (SERVER_URL) in /opt/feishin/.env, then restart nginx.",
-            "type": "info"
-        },
-        {
-            "text": "Default web URL is http://YOUR_IP:9180.",
+            "text": "Feishin is a client only. Configure your music backend in Feishin Frontend.",
             "type": "info"
         },
         {
