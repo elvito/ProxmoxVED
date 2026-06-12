@@ -12,6 +12,7 @@ var_ram="${var_ram:-512}"
 var_disk="${var_disk:-4}"
 var_os="${var_os:-ubuntu}"
 var_version="${var_version:-24.04}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -29,24 +30,34 @@ function update_script() {
     exit
   fi
 
-  CURRENT=$(cat /root/.kiwix 2>/dev/null || dpkg -s kiwix-tools 2>/dev/null | awk '/^Version:/{print $2}')
+  CURRENT=$(dpkg-query -W -f='${Version}' kiwix-tools 2>/dev/null)
+
+  msg_info "Updating Package Index"
+  $STD apt update
+  msg_ok "Updated Package Index"
+
+  CANDIDATE=$(apt-cache policy kiwix-tools | awk '/Candidate:/{print $2}')
+  if [[ -z "$CANDIDATE" || "$CANDIDATE" == "(none)" ]]; then
+    msg_error "No Candidate Version Found for kiwix-tools"
+    exit
+  fi
+
+  if [[ "$CURRENT" == "$CANDIDATE" ]]; then
+    echo "${CURRENT}" >/root/.kiwix
+    msg_ok "Already on latest version: ${CURRENT}"
+    exit
+  fi
 
   msg_info "Stopping Service"
   systemctl stop kiwix-serve
   msg_ok "Stopped Service"
 
   msg_info "Updating Kiwix-Tools"
-  $STD apt update
   $STD apt install -y --only-upgrade kiwix-tools
-  RELEASE=$(dpkg -s kiwix-tools 2>/dev/null | awk '/^Version:/{print $2}')
+  RELEASE=$(dpkg-query -W -f='${Version}' kiwix-tools 2>/dev/null)
   echo "${RELEASE}" >/root/.kiwix
   msg_ok "Updated Kiwix-Tools"
-
-  if [[ "$CURRENT" == "$RELEASE" ]]; then
-    msg_ok "Already on latest version: ${CURRENT}"
-  else
-    msg_ok "Updated successfully from ${CURRENT} to ${RELEASE}!"
-  fi
+  msg_ok "Updated successfully from ${CURRENT} to ${RELEASE}!"
 
   msg_info "Starting Service"
   systemctl start kiwix-serve

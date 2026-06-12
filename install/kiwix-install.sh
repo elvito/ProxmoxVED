@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright (c) 2021-2026 community-scripts ORG
-# Author: tewalds
+# Author: MickLesk (CanbiZ) | tewalds
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/kiwix/kiwix-tools
 
@@ -25,10 +25,9 @@ msg_ok "Added Kiwix PPA"
 msg_info "Installing Kiwix-Tools"
 $STD apt install -y kiwix-tools
 RELEASE=$(dpkg -s kiwix-tools 2>/dev/null | awk '/^Version:/{print $2}')
-echo "${RELEASE}" >/root/.kiwix
-msg_ok "Installed Kiwix-Tools ${RELEASE}"
-
 mkdir -p /data
+echo "${RELEASE}" >/root/.kiwix
+msg_ok "Installed Kiwix-Tools"
 
 msg_info "Creating Service"
 cat <<'EOF' >/etc/systemd/system/kiwix-serve.service
