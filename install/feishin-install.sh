@@ -46,20 +46,21 @@ EOF
 msg_ok "Configured Environment"
 
 msg_info "Publishing Web Assets"
-rm -rf /var/www/feishin
-mkdir -p /var/www/feishin
-cp -r /opt/feishin/out/web/. /var/www/feishin/
+rm -rf /usr/share/nginx/html
+mkdir -p /usr/share/nginx/html
+cp -r /opt/feishin/out/web/. /usr/share/nginx/html/
 
 set -a
 source /opt/feishin/.env
 set +a
 
-envsubst </opt/feishin/settings.js.template >/var/www/feishin/settings.js
+envsubst </opt/feishin/settings.js.template >/etc/nginx/conf.d/settings.js
 envsubst '${PUBLIC_PATH}' </opt/feishin/ng.conf.template >/etc/nginx/sites-available/feishin
 
 ln -sf /etc/nginx/sites-available/feishin /etc/nginx/sites-enabled/feishin
 rm -f /etc/nginx/sites-enabled/default
 systemctl enable -q --now nginx
+systemctl reload nginx
 msg_ok "Published Web Assets"
 
 motd_ssh

@@ -22,7 +22,7 @@
             "config_path": "/opt/feishin/.env",
             "resources": {
                 "cpu": 2,
-                "ram": 2048,
+                "ram": 4096,
                 "hdd": 8,
                 "os": "Debian",
                 "version": "13"
