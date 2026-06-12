@@ -27,7 +27,7 @@ msg_info "Building Feishin Web"
 cd /opt/feishin
 PNPM_VERSION=$(jq -r '.packageManager | ltrimstr("pnpm@")' /opt/feishin/package.json)
 $STD corepack enable
-$STD corepack prepare "pnpm@${PNPM_VERSION}" --activate
+$STD corepack prepare "pnpm@10" --activate
 $STD pnpm install
 $STD pnpm run build:web
 msg_ok "Built Feishin Web"
