@@ -54,9 +54,9 @@ if [ ! -f "$SECURITY_HEADERS_SRC" ]; then
 fi
 cp "$SECURITY_HEADERS_SRC" /etc/nginx/snippets/security-headers.conf
 
-chown -R root:root /opt/rackula
-find /opt/rackula -type d -exec chmod 755 {} \;
-find /opt/rackula -type f -exec chmod 644 {} \;
+chown -R root:root /opt/rackula/frontend
+find /opt/rackula/frontend -type d -exec chmod 755 {} \;
+find /opt/rackula/frontend -type f -exec chmod 644 {} \;
 chmod 750 /opt/rackula/data
 
 API_WRITE_TOKEN=$(openssl rand -hex 32)
@@ -90,6 +90,11 @@ msg_ok "Configured nginx"
 
 msg_info "Creating Services"
 cp /opt/rackula/config/rackula-api.service /etc/systemd/system/rackula-api.service
+if grep -q '^User=' /etc/systemd/system/rackula-api.service; then
+  sed -i 's/^User=.*/User=root/' /etc/systemd/system/rackula-api.service
+else
+  sed -i '/^\[Service\]/a User=root' /etc/systemd/system/rackula-api.service
+fi
 mkdir -p /etc/systemd/system/nginx.service.d
 cp /opt/rackula/config/nginx.service.d-override.conf /etc/systemd/system/nginx.service.d/override.conf
 systemctl enable -q nginx rackula-api
@@ -104,6 +109,8 @@ for i in $(seq 0 9); do
   fi
   sleep 1
   if [ "$i" -eq 9 ]; then
+    msg_info "Last rackula-api logs"
+    journalctl -u rackula-api --no-pager -n 50 || true
     msg_error "Service failed to respond on http://127.0.0.1/api/health within 10 seconds"
     exit 1
   fi

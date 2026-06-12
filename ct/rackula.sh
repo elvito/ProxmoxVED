@@ -58,11 +58,16 @@ function update_script() {
     cp /opt/rackula/config/nginx.conf /etc/nginx/sites-available/rackula
     cp /opt/rackula/config/security-headers.conf /etc/nginx/snippets/security-headers.conf
     cp /opt/rackula/config/rackula-api.service /etc/systemd/system/rackula-api.service
+    if grep -q '^User=' /etc/systemd/system/rackula-api.service; then
+      sed -i 's/^User=.*/User=root/' /etc/systemd/system/rackula-api.service
+    else
+      sed -i '/^\[Service\]/a User=root' /etc/systemd/system/rackula-api.service
+    fi
     mkdir -p /etc/systemd/system/nginx.service.d
     cp /opt/rackula/config/nginx.service.d-override.conf /etc/systemd/system/nginx.service.d/override.conf
-    chown -R root:root /opt/rackula
-    find /opt/rackula -type d -exec chmod 755 {} \;
-    find /opt/rackula -type f -exec chmod 644 {} \;
+    chown -R root:root /opt/rackula/frontend
+    find /opt/rackula/frontend -type d -exec chmod 755 {} \;
+    find /opt/rackula/frontend -type f -exec chmod 644 {} \;
     chmod 750 /opt/rackula/data
     msg_ok "Updated Configuration"
 
@@ -82,6 +87,8 @@ function update_script() {
         break
       fi
       if [ "$i" -eq 10 ]; then
+        msg_info "Last rackula-api logs"
+        journalctl -u rackula-api --no-pager -n 50 || true
         msg_error "Service failed to respond on http://127.0.0.1/api/health within 10 seconds"
         exit 1
       fi
