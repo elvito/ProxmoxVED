@@ -60,12 +60,10 @@ function update_script() {
     cp /opt/rackula/config/rackula-api.service /etc/systemd/system/rackula-api.service
     mkdir -p /etc/systemd/system/nginx.service.d
     cp /opt/rackula/config/nginx.service.d-override.conf /etc/systemd/system/nginx.service.d/override.conf
-    chown -R root:root /opt/rackula/frontend
-    find /opt/rackula/frontend -type d -exec chmod 755 {} \;
-    find /opt/rackula/frontend -type f -exec chmod 644 {} \;
-    chown -R rackula:rackula /opt/rackula/{api,data}
+    chown -R root:root /opt/rackula
+    find /opt/rackula -type d -exec chmod 755 {} \;
+    find /opt/rackula -type f -exec chmod 644 {} \;
     chmod 750 /opt/rackula/data
-    systemctl daemon-reload
     msg_ok "Updated Configuration"
 
     msg_info "Starting Services"
