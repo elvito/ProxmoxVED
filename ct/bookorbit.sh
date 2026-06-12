@@ -56,6 +56,8 @@ function update_script() {
     mkdir -p /opt/bookorbit/server/migrations
     cp -r /opt/bookorbit/server/src/db/migrations/. /opt/bookorbit/server/migrations/
     chmod +x /opt/bookorbit/server/bin/kepubify/*
+    APP_VERSION=$(cat ~/.bookorbit)
+    sed -i "s/^APP_VERSION=.*/APP_VERSION=$APP_VERSION/" /opt/bookorbit/.env
     msg_ok "Rebuilt Application"
 
     msg_info "Updating Kobo Python Runtime"
