@@ -63,6 +63,11 @@ function update_script() {
     else
       sed -i '/^\[Service\]/a User=root' /etc/systemd/system/rackula-api.service
     fi
+    if grep -q '^Group=' /etc/systemd/system/rackula-api.service; then
+      sed -i 's/^Group=.*/Group=root/' /etc/systemd/system/rackula-api.service
+    else
+      sed -i '/^\[Service\]/a Group=root' /etc/systemd/system/rackula-api.service
+    fi
     mkdir -p /etc/systemd/system/nginx.service.d
     cp /opt/rackula/config/nginx.service.d-override.conf /etc/systemd/system/nginx.service.d/override.conf
     chown -R root:root /opt/rackula/frontend
