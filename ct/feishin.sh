@@ -8,7 +8,7 @@ source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxV
 APP="Feishin"
 var_tags="${var_tags:-music;player;streaming}"
 var_cpu="${var_cpu:-2}"
-var_ram="${var_ram:-2048}"
+var_ram="${var_ram:-4096}"
 var_disk="${var_disk:-8}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
@@ -39,9 +39,9 @@ function update_script() {
 
     msg_info "Rebuilding Feishin Web"
     cd /opt/feishin
-    PNPM_VERSION=$(jq -r '.packageManager | ltrimstr("pnpm@")' /opt/feishin/package.json)
+    #PNPM_VERSION=$(jq -r '.packageManager | ltrimstr("pnpm@")' /opt/feishin/package.json)
     $STD corepack enable
-    $STD corepack prepare "pnpm@${PNPM_VERSION}" --activate
+    $STD corepack prepare "pnpm@10" --activate
     $STD pnpm install
     $STD pnpm run build:web
     msg_ok "Rebuilt Feishin Web"

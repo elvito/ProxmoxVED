@@ -25,7 +25,7 @@ fetch_and_deploy_gh_release "feishin" "jeffvli/feishin" "tarball"
 
 msg_info "Building Feishin Web"
 cd /opt/feishin
-PNPM_VERSION=$(jq -r '.packageManager | ltrimstr("pnpm@")' /opt/feishin/package.json)
+#PNPM_VERSION=$(jq -r '.packageManager | ltrimstr("pnpm@")' /opt/feishin/package.json)
 $STD corepack enable
 $STD corepack prepare "pnpm@10" --activate
 $STD pnpm install
