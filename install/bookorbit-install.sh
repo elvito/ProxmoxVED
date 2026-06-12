@@ -48,6 +48,7 @@ msg_ok "Set up Python Runtime"
 
 msg_info "Configuring Application"
 mkdir -p /opt/bookorbit-data/covers /opt/bookorbit-data/book-bucket /opt/bookorbit-books
+APP_VERSION=$(cat ~/.bookorbit)
 JWT_SECRET=$(openssl rand -hex 32)
 SETUP_BOOTSTRAP_TOKEN=$(openssl rand -hex 16)
 cat <<EOF >>~/bookorbit.creds
@@ -66,6 +67,7 @@ NODE_OPTIONS=--max-old-space-size=2048
 APP_DATA_PATH=/opt/bookorbit-data
 KOBO_CLOUDSCRAPER_PYTHON=/opt/bookorbit-python/bin/python
 BOOK_DOCK_PATH=/opt/bookorbit-data/book-bucket
+APP_VERSION=v${APP_VERSION}
 EOF
 msg_ok "Configured Application"
 
