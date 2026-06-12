@@ -33,11 +33,11 @@
     },
     "notes": [
         {
-            "text": "Requires a bind-mounted directory with ZIM archives. Download some from https://library.kiwix.org to /your/zims. The installation command is then: `ZIM_DATA=/your/zims bash -c \"$(curl .../ct/kiwix.sh)\"`.",
+            "text": "Place your .zim files in /data inside the container (local files work out of the box). Optional: you can bind-mount a host directory to /data if you want external storage.",
             "type": "info"
         },
         {
-            "text": "Ensure ZIM files are world-readable: chmod -R a+rX /your/zims",
+            "text": "Ensure ZIM files are readable by the service user (for host mounts, for example: chmod -R a+rX /your/zims).",
             "type": "warning"
         }
     ]
