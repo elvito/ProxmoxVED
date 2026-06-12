@@ -35,9 +35,12 @@ function update_script() {
     systemctl stop bookorbit
     msg_ok "Stopped Service"
 
-    msg_info "Backing up Configuration"
-    cp /opt/bookorbit/.env /opt/bookorbit.env.bak
-    msg_ok "Backed up Configuration"
+    #REMOVE BEFORE MERGE TO MAIN AND RESTORE BACKUP BELOW
+    create_backup /opt/bookorbit/.env
+
+    #msg_info "Backing up Configuration"
+    #cp /opt/bookorbit/.env /opt/bookorbit.env.bak
+    #msg_ok "Backed up Configuration"
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "bookorbit" "bookorbit/bookorbit" "tarball"
 
@@ -59,10 +62,12 @@ function update_script() {
     uv pip install --python /opt/bookorbit-python/bin/python -r /opt/bookorbit/server/requirements/kobo-cloudscraper.txt
     msg_ok "Updated Kobo Python Runtime"
 
-    msg_info "Restoring Configuration"
-    cp /opt/bookorbit.env.bak /opt/bookorbit/.env
-    rm -f /opt/bookorbit.env.bak
-    msg_ok "Restored Configuration"
+    #remove BEFORE MERGE TO MAIN AND UNCOMMENT RESTORE BELOW
+    restore_backup
+    #msg_info "Restoring Configuration"
+    #cp /opt/bookorbit.env.bak /opt/bookorbit/.env
+    #rm -f /opt/bookorbit.env.bak
+    #msg_ok "Restored Configuration"
 
     msg_info "Starting Service"
     systemctl start bookorbit
