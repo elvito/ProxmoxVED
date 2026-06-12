@@ -56,7 +56,7 @@ function update_script() {
     msg_ok "Rebuilt Application"
 
     msg_info "Updating Kobo Python Runtime"
-    uv pip install --python /opt/bookorbit-python/bin/python -r /opt/bookorbit/server/requirements/kobo-cloudscraper.txt
+    $STD uv pip install --python /opt/bookorbit-python/bin/python -r /opt/bookorbit/server/requirements/kobo-cloudscraper.txt
     msg_ok "Updated Kobo Python Runtime"
 
 
