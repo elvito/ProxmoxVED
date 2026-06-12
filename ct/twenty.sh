@@ -36,16 +36,12 @@ function update_script() {
     systemctl stop twenty-worker twenty-server
     msg_ok "Stopped Services"
 
-    msg_info "Backing up Data"
-    cp /opt/twenty/.env /opt/twenty.env.bak
-    cp -r /opt/twenty/packages/twenty-server/.local-storage /opt/twenty_storage_backup 2>/dev/null || true
-    msg_ok "Backed up Data"
+    create_backup /opt/twenty/.env \
+                  /opt/twenty/packages/twenty-server/.local-storage
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "twenty" "twentyhq/twenty" "tarball"
 
-    msg_info "Restoring Configuration"
-    cp /opt/twenty.env.bak /opt/twenty/.env
-    msg_ok "Restored Configuration"
+    restore_backup
 
     msg_info "Building Application"
     cd /opt/twenty
@@ -67,10 +63,7 @@ function update_script() {
     $STD npx -y typeorm migration:run -d dist/database/typeorm/core/core.datasource
     msg_ok "Ran Database Migrations"
 
-    msg_info "Restoring Storage"
-    cp -r /opt/twenty_storage_backup/. /opt/twenty/packages/twenty-server/.local-storage/ 2>/dev/null || true
-    rm -rf /opt/twenty_storage_backup /opt/twenty.env.bak
-    msg_ok "Restored Storage"
+    restore_backup
 
     msg_info "Starting Services"
     systemctl start twenty-server twenty-worker

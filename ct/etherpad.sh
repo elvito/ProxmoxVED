@@ -35,10 +35,8 @@ function update_script() {
     systemctl stop etherpad
     msg_ok "Stopped Service"
 
-    msg_info "Backing up Configuration"
-    [ -f /opt/etherpad-lite/settings.json ] && cp /opt/etherpad-lite/settings.json /opt/etherpad-settings.json.bak
-    [ -d /opt/etherpad-lite/var ] && cp -a /opt/etherpad-lite/var /opt/etherpad-var.bak
-    msg_ok "Backed up Configuration"
+    create_backup /opt/etherpad/.env \
+      /opt/etherpad/APIKEY.txt
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad" "tarball"
 
@@ -50,11 +48,7 @@ function update_script() {
     $STD pnpm run build:etherpad
     msg_ok "Rebuilt Etherpad"
 
-    msg_info "Restoring Configuration"
-    [ -f /opt/etherpad-settings.json.bak ] && mv /opt/etherpad-settings.json.bak /opt/etherpad-lite/settings.json
-    [ -d /opt/etherpad-var.bak ] && rm -rf /opt/etherpad-lite/var && mv /opt/etherpad-var.bak /opt/etherpad-lite/var
-    chown -R etherpad:etherpad /opt/etherpad-lite
-    msg_ok "Restored Configuration"
+    restore_backup
 
     msg_info "Starting Service"
     systemctl start etherpad

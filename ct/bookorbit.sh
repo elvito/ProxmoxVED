@@ -59,7 +59,6 @@ function update_script() {
     uv pip install --python /opt/bookorbit-python/bin/python -r /opt/bookorbit/server/requirements/kobo-cloudscraper.txt
     msg_ok "Updated Kobo Python Runtime"
 
-    restore_backup
 
     msg_info "Starting Service"
     systemctl start bookorbit

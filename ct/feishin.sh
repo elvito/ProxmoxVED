@@ -31,9 +31,7 @@ function update_script() {
   fi
 
   if check_for_gh_release "feishin" "jeffvli/feishin"; then
-    msg_info "Backing up Configuration"
-    cp /opt/feishin/.env /opt/feishin.env.bak
-    msg_ok "Backed up Configuration"
+    create_backup /opt/feishin/.env
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "feishin" "jeffvli/feishin" "tarball"
 
@@ -46,10 +44,7 @@ function update_script() {
     $STD pnpm run build:web
     msg_ok "Rebuilt Feishin Web"
 
-    msg_info "Restoring Configuration"
-    cp /opt/feishin.env.bak /opt/feishin/.env
-    rm -f /opt/feishin.env.bak
-    msg_ok "Restored Configuration"
+    restore_backup
 
     msg_info "Publishing Web Assets"
     rm -rf /usr/share/nginx/html

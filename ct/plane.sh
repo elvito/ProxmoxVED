@@ -35,24 +35,15 @@ function update_script() {
     systemctl stop plane-api plane-worker plane-beat plane-live plane-space
     msg_ok "Stopped Services"
 
-    msg_info "Backing up Data"
-    cp /opt/plane/apps/api/.env /opt/plane-api-env.bak
-    cp /opt/plane/.env /opt/plane-live-env.bak
-    cp /opt/plane/apps/web/.env /opt/plane-web-env.bak
-    cp /opt/plane/apps/admin/.env /opt/plane-admin-env.bak
-    cp /opt/plane/apps/space/.env /opt/plane-space-env.bak
-    msg_ok "Backed up Data"
+    create_backup /opt/plane/.env \
+        /opt/plane/apps/admin/.env \
+        /opt/plane/apps/api/.env \
+        /opt/plane/apps/space/.env \
+       /opt/plane/apps/web/.env
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "plane" "makeplane/plane" "tarball"
 
-    msg_info "Restoring Config"
-    cp /opt/plane-api-env.bak /opt/plane/apps/api/.env
-    cp /opt/plane-live-env.bak /opt/plane/.env
-    cp /opt/plane-web-env.bak /opt/plane/apps/web/.env
-    cp /opt/plane-admin-env.bak /opt/plane/apps/admin/.env
-    cp /opt/plane-space-env.bak /opt/plane/apps/space/.env
-    rm -f /opt/plane-api-env.bak /opt/plane-live-env.bak /opt/plane-web-env.bak /opt/plane-admin-env.bak /opt/plane-space-env.bak
-    msg_ok "Restored Config"
+    restore_backup
 
     msg_info "Rebuilding Frontend (Patience)"
     cd /opt/plane

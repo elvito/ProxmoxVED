@@ -42,9 +42,7 @@ function update_script() {
   systemctl stop airflow-api-server airflow-scheduler airflow-dag-processor airflow-triggerer
   msg_ok "Stopped Services"
 
-  msg_info "Backing up Configuration"
-  cp /opt/airflow/.env /opt/airflow.env.bak
-  msg_ok "Backed up Configuration"
+  create_backup /opt/airflow/.env
 
   msg_info "Updating Apache Airflow to ${LATEST}"
   $STD uv pip install --python /opt/airflow/.venv/bin/python \
@@ -53,10 +51,7 @@ function update_script() {
   echo "${LATEST}" >~/.airflow
   msg_ok "Updated Apache Airflow to ${LATEST}"
 
-  msg_info "Restoring Configuration"
-  cp /opt/airflow.env.bak /opt/airflow/.env
-  rm -f /opt/airflow.env.bak
-  msg_ok "Restored Configuration"
+    restore_backup
 
   msg_info "Running Database Migrations"
   set -a && source /opt/airflow/.env && set +a

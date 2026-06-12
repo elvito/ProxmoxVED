@@ -36,11 +36,9 @@ function update_script() {
     systemctl stop caddymanager-frontend
     msg_ok "Stopped Service"
 
-    msg_info "Backing up configuration"
-    cp /opt/caddymanager/caddymanager.env /opt/
-    cp /opt/caddymanager/caddymanager.sqlite /opt/
-    cp /opt/caddymanager/frontend/Caddyfile /opt/
-    msg_ok "Backed up configuration"
+    create_backup /opt/caddymanager/caddymanager.env \
+                  /opt/caddymanager/caddymanager.sqlite \
+                  /opt/caddymanager/frontend/Caddyfile
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "caddymanager" "caddymanager/caddymanager" "tarball"
 
@@ -52,11 +50,7 @@ function update_script() {
     $STD npm run build
     msg_ok "Installed CaddyManager"
 
-    msg_info "Restoring configuration"
-    mv /opt/caddymanager.env /opt/caddymanager/
-    mv /opt/caddymanager.sqlite /opt/caddymanager/
-    mv -f /opt/Caddyfile /opt/caddymanager/frontend/
-    msg_ok "Restored configuration"
+    restore_backup
 
     msg_info "Starting Service"
     systemctl start caddymanager-backend
