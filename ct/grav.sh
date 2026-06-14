@@ -36,7 +36,7 @@ function update_script() {
         cd /opt/grav
         bin/grav backup -nq
         msg_ok "Backup Created"
-	bin/gpm self-upgrade -y
+        bin/gpm self-upgrade -y
         cd -
         chown -R www-data:www-data /opt/grav
         msg_ok "Update Successful"
