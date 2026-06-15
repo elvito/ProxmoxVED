@@ -29,6 +29,34 @@ mkdir -p /data
 echo "${RELEASE}" >/root/.kiwix
 msg_ok "Installed Kiwix-Tools"
 
+msg_info "Downloading Kiwix Test Archive"
+ZIM_BASE_URL="https://download.kiwix.org/zim/wikipedia"
+ZIM_FILE="$(CURL_TIMEOUT=60 CURL_CONNECT_TO=15 curl_with_retry "${ZIM_BASE_URL}/" "-" |
+  grep -oE 'href="speedtest_en_blob_[0-9]{4}-[0-9]{2}\.zim"' |
+  sed -E 's/^href="|"$//g' |
+  sort -V |
+  tail -n 1)" || true
+
+if [[ -z "${ZIM_FILE}" ]]; then
+  msg_warn "No Kiwix speedtest ZIM archive found - skipping optional download"
+else
+  ZIM_URL="${ZIM_BASE_URL}/${ZIM_FILE}"
+  ZIM_TEMP="/data/.${ZIM_FILE}.tmp"
+  ZIM_TARGET="/data/${ZIM_FILE}"
+  if ! CURL_TIMEOUT=120 CURL_CONNECT_TO=15 curl_with_retry "${ZIM_URL}" "${ZIM_TEMP}"; then
+    rm -f "${ZIM_TEMP}"
+    msg_warn "Failed to download Kiwix ZIM archive - skipping optional download"
+    ZIM_FILE=""
+  elif [[ ! -s "${ZIM_TEMP}" ]]; then
+    rm -f "${ZIM_TEMP}"
+    msg_warn "Downloaded Kiwix ZIM archive is empty - skipping optional download"
+    ZIM_FILE=""
+  else
+    mv "${ZIM_TEMP}" "${ZIM_TARGET}"
+    msg_ok "Downloaded Kiwix Test Archive (${ZIM_FILE})"
+  fi
+fi
+
 msg_info "Creating Service"
 cat <<'EOF' >/etc/systemd/system/kiwix-serve.service
 [Unit]
