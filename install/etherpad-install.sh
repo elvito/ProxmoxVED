@@ -81,6 +81,7 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 systemctl enable -q --now etherpad
+systemctl restart etherpad
 msg_ok "Created Service"
 
 motd_ssh
