@@ -62,28 +62,9 @@ function update_script() {
     msg_ok "Updated Configuration"
 
     msg_info "Starting Services"
-    if ! nginx -t >/dev/null 2>&1; then
-      msg_error "nginx configuration test failed (run 'nginx -t' for details)"
-      systemctl start nginx rackula-api || true
-      exit 1
-    fi
+    $STD nginx -t
     systemctl start nginx rackula-api
     msg_ok "Started Services"
-
-    msg_info "Verifying Services"
-    for i in $(seq 1 10); do
-      if curl -sf --connect-timeout 2 --max-time 5 http://127.0.0.1/api/health >/dev/null 2>&1; then
-        msg_ok "Service running successfully"
-        break
-      fi
-      if [ "$i" -eq 10 ]; then
-        msg_info "Last rackula-api logs"
-        journalctl -u rackula-api --no-pager -n 50 || true
-        msg_error "Service failed to respond on http://127.0.0.1/api/health within 10 seconds"
-        exit 1
-      fi
-      sleep 1
-    done
 
     msg_ok "Updated successfully!"
   fi

@@ -36,10 +36,6 @@ install -m 755 "$BUN_TMP/bun-linux-${BUN_VARIANT}/bun" /usr/local/bun/bin/bun
 rm -rf "$BUN_TMP"
 ln -sf /usr/local/bun/bin/bun /usr/local/bin/bun
 ln -sf /usr/local/bun/bin/bun /usr/local/bin/bunx
-[ -x /usr/local/bun/bin/bun ] || {
-  msg_error "Bun installation failed"
-  exit 1
-}
 msg_ok "Installed Bun"
 
 fetch_and_deploy_gh_release "rackula" "RackulaLives/Rackula" "prebuild" "latest" "/opt/rackula" "rackula-lxc-*.tar.gz"
@@ -82,10 +78,7 @@ msg_info "Configuring nginx"
 cp /opt/rackula/config/nginx.conf /etc/nginx/sites-available/rackula
 rm -f /etc/nginx/sites-enabled/default
 ln -sf /etc/nginx/sites-available/rackula /etc/nginx/sites-enabled/rackula
-if ! $STD nginx -t; then
-  msg_error "nginx configuration test failed (run 'nginx -t' for details)"
-  exit 1
-fi
+$STD nginx -t
 msg_ok "Configured nginx"
 
 msg_info "Creating Services"
@@ -105,21 +98,6 @@ cp /opt/rackula/config/nginx.service.d-override.conf /etc/systemd/system/nginx.s
 systemctl enable -q nginx rackula-api
 systemctl restart nginx rackula-api
 msg_ok "Created Services"
-
-msg_info "Verifying Services"
-for i in $(seq 0 9); do
-  if curl -sf --connect-timeout 2 --max-time 5 http://127.0.0.1/api/health >/dev/null 2>&1; then
-    msg_ok "Service running successfully"
-    break
-  fi
-  sleep 1
-  if [ "$i" -eq 9 ]; then
-    msg_info "Last rackula-api logs"
-    journalctl -u rackula-api --no-pager -n 50 || true
-    msg_error "Service failed to respond on http://127.0.0.1/api/health within 10 seconds"
-    exit 1
-  fi
-done
 
 motd_ssh
 customize
