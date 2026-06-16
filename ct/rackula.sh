@@ -36,7 +36,7 @@ function update_script() {
     msg_ok "Stopped Services"
 
     create_backup /opt/rackula/data
-    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "rackula" "RackulaLives/Rackula" "prebuild" "${var_version}" "/opt/rackula" "rackula-lxc-*.tar.gz"
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "rackula" "RackulaLives/Rackula" "prebuild" "latest" "/opt/rackula" "rackula-lxc-*.tar.gz"
     restore_backup
 
     msg_info "Updating Configuration"
