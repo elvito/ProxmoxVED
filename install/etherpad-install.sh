@@ -27,42 +27,35 @@ export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 $STD corepack enable
 msg_ok "Enabled pnpm"
 
-msg_info "Creating etherpad User"
-addgroup --system etherpad
-useradd --system --create-home --home-dir /var/lib/etherpad --shell /usr/sbin/nologin etherpad -g etherpad
-msg_ok "Created etherpad User"
+# msg_info "Creating etherpad User"
+# addgroup --system etherpad
+# useradd --system --create-home --home-dir /var/lib/etherpad --shell /usr/sbin/nologin etherpad -g etherpad
+# msg_ok "Created etherpad User"
 
 fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad" "tarball"
 
+# msg_info "Building Etherpad"
+# chown -R etherpad:etherpad /opt/etherpad-lite
+# $STD runuser -u etherpad -- env HOME=/var/lib/etherpad COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+#   bash -c 'cd /opt/etherpad-lite && pnpm install --frozen-lockfile && pnpm run build:etherpad'
+# msg_ok "Built Etherpad"
+
 msg_info "Building Etherpad"
-# Build AS the etherpad service user, not root. pnpm records its
-# content-addressable store path in node_modules/.modules.yaml; if the build
-# runs as root the store is /root/.local/share/pnpm/store (mode 0700). At
-# startup Etherpad runs `pnpm ls` as the etherpad user to migrate plugins,
-# which tries to mkdir that root-owned store, fails with EACCES, exits 243,
-# and the server aborts before binding :9001 ("connection refused"). Building
-# as etherpad keeps the install- and run-time users (and their pnpm store /
-# corepack cache) consistent.
-chown -R etherpad:etherpad /opt/etherpad-lite
-$STD runuser -u etherpad -- env HOME=/var/lib/etherpad COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
-  bash -c 'cd /opt/etherpad-lite && pnpm install --frozen-lockfile && pnpm run build:etherpad'
+cd /opt/etherpad-lite
+$STD pnpm install --frozen-lockfile
+$STD pnpm run build:etherpad
 msg_ok "Built Etherpad"
 
 msg_info "Configuring Etherpad"
 cp /opt/etherpad-lite/settings.json.template /opt/etherpad-lite/settings.json
-# Switch dbType from the upstream template's dev-only "dirty" default to
-# sqlite (ACID, single-file) backed by a file in the etherpad user's
-# state directory. Matches the same default across our snap, .deb, and
-# Home Assistant add-on packagings. Admins who need postgres or mysql
-# can edit settings.json and switch dbType + dbSettings; ueberdb
-# supports both backends via the same code path.
-install -d -o etherpad -g etherpad -m 0750 /var/lib/etherpad
+# install -d -o etherpad -g etherpad -m 0750 /var/lib/etherpad
+mkdir -p /var/lib/etherpad
 sed -i \
   -e 's#"ip": *"127.0.0.1"#"ip": "0.0.0.0"#' \
   -e 's#"dbType" *: *"dirty"#"dbType": "sqlite"#' \
   -e 's#"filename" *: *"var/dirty.db"#"filename": "/var/lib/etherpad/etherpad.db"#' \
   /opt/etherpad-lite/settings.json
-chown -R etherpad:etherpad /opt/etherpad-lite
+# chown -R etherpad:etherpad /opt/etherpad-lite
 msg_ok "Configured Etherpad"
 
 msg_info "Creating Service"
@@ -74,8 +67,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=etherpad
-Group=etherpad
+User=root
 WorkingDirectory=/opt/etherpad-lite
 Environment=NODE_ENV=production
 Environment=COREPACK_ENABLE_DOWNLOAD_PROMPT=0
