@@ -35,9 +35,17 @@ msg_ok "Created etherpad User"
 fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad" "tarball"
 
 msg_info "Building Etherpad"
-cd /opt/etherpad-lite
-$STD pnpm install --frozen-lockfile
-$STD pnpm run build:etherpad
+# Build AS the etherpad service user, not root. pnpm records its
+# content-addressable store path in node_modules/.modules.yaml; if the build
+# runs as root the store is /root/.local/share/pnpm/store (mode 0700). At
+# startup Etherpad runs `pnpm ls` as the etherpad user to migrate plugins,
+# which tries to mkdir that root-owned store, fails with EACCES, exits 243,
+# and the server aborts before binding :9001 ("connection refused"). Building
+# as etherpad keeps the install- and run-time users (and their pnpm store /
+# corepack cache) consistent.
+chown -R etherpad:etherpad /opt/etherpad-lite
+$STD runuser -u etherpad -- env HOME=/var/lib/etherpad COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+  bash -c 'cd /opt/etherpad-lite && pnpm install --frozen-lockfile && pnpm run build:etherpad'
 msg_ok "Built Etherpad"
 
 msg_info "Configuring Etherpad"
@@ -70,6 +78,7 @@ User=etherpad
 Group=etherpad
 WorkingDirectory=/opt/etherpad-lite
 Environment=NODE_ENV=production
+Environment=COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 ExecStart=/usr/bin/pnpm run prod
 Restart=always
 RestartSec=5

@@ -41,11 +41,15 @@ function update_script() {
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad" "tarball"
 
     msg_info "Rebuilding Etherpad"
-    cd /opt/etherpad-lite
     export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
     $STD corepack enable
-    $STD pnpm install --frozen-lockfile
-    $STD pnpm run build:etherpad
+    # Rebuild AS the etherpad user so the pnpm store is created under
+    # /var/lib/etherpad (not root's home). A root-built store makes the
+    # service user's startup `pnpm ls` fail with EACCES/exit 243 — see the
+    # install script for the full rationale.
+    chown -R etherpad:etherpad /opt/etherpad-lite
+    $STD runuser -u etherpad -- env HOME=/var/lib/etherpad COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+      bash -c 'cd /opt/etherpad-lite && pnpm install --frozen-lockfile && pnpm run build:etherpad'
     msg_ok "Rebuilt Etherpad"
 
     restore_backup
