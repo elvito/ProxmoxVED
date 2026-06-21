@@ -34,12 +34,13 @@ After=network.target
 
 [Service]
 WorkingDirectory=/opt/fmd-server
-ExecStart=fmd-server-amd64 serve
+ExecStart=/opt/fmd-server/fmd-server-amd64 serve
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
+systemctl enable -q --now fmd-server
 msg_ok "Created services"
 
 motd_ssh
