@@ -31,7 +31,7 @@ function update_script() {
 
   if check_for_gh_release "iventoy" "ventoy/PXE"; then
     msg_info "Stopping iVentoy"
-    systemctl stop iventoy
+    $STD /opt/iventoy/iventoy.sh stop
     msg_ok "Stopped iVentoy"
 
     create_backup /opt/iventoy/data /opt/iventoy/iso
@@ -39,7 +39,7 @@ function update_script() {
     restore_backup
 
     msg_info "Starting iVentoy"
-    systemctl start iventoy
+    $STD /opt/iventoy/iventoy.sh -R start
     msg_ok "Started iVentoy"
     msg_ok "Updated Successfully"
   fi
