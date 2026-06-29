@@ -532,6 +532,13 @@ silent() {
     local explanation
     explanation="$(explain_exit_code "$rc")"
 
+    # Capture failure location ("where") for telemetry. silent() exits directly
+    # (the EXIT trap reports the failure), so set these before exiting so
+    # build_error_string / _send_abort_telemetry can include the command + line.
+    FAILED_COMMAND="$cmd"
+    FAILED_LINE="$caller_line"
+    export FAILED_COMMAND FAILED_LINE
+
     printf "\e[?25h"
     msg_error "in line ${caller_line}: exit code ${rc} (${explanation})"
     msg_custom "→" "${YWB}" "${cmd}"

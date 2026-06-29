@@ -250,6 +250,12 @@ error_handler() {
     return 0
   fi
 
+  # Export the failure location so telemetry (build_error_string in api.func) can
+  # include the "where" — the line number and command that triggered the trap.
+  FAILED_COMMAND="$command"
+  FAILED_LINE="$line_number"
+  export FAILED_COMMAND FAILED_LINE
+
   # Stop spinner and restore cursor FIRST — before any output
   # This prevents spinner text overlapping with error messages
   if declare -f stop_spinner >/dev/null 2>&1; then
@@ -535,10 +541,21 @@ _send_abort_telemetry() {
   if declare -f explain_exit_code &>/dev/null; then
     explanation=$(explain_exit_code "$exit_code" 2>/dev/null) || true
   fi
+  # Include failure location ("where") if the error handler captured it.
+  local location=""
+  if [[ -n "${FAILED_COMMAND:-}" ]]; then
+    local _fc
+    _fc=$(printf '%s' "${FAILED_COMMAND}" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr -d '\000-\037' | head -c 300)
+    if [[ -n "${FAILED_LINE:-}" ]]; then
+      location=" | at line ${FAILED_LINE}: ${_fc}"
+    else
+      location=" | command: ${_fc}"
+    fi
+  fi
   if [[ -n "$explanation" && -n "$error_text" ]]; then
-    error_text="exit_code=${exit_code} | ${explanation}|---|${error_text}"
+    error_text="exit_code=${exit_code} | ${explanation}${location}|---|${error_text}"
   elif [[ -n "$explanation" && -z "$error_text" ]]; then
-    error_text="exit_code=${exit_code} | ${explanation}"
+    error_text="exit_code=${exit_code} | ${explanation}${location}"
   fi
 
   # Calculate duration if start time is available
