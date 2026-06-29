@@ -14,29 +14,28 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-ensure_dependencies build-essential
-setup_go
+$STD apt install -y build-essential
 msg_ok "Installed Dependencies"
 
+setup_go
 fetch_and_deploy_gh_release "koffan" "PanSalut/Koffan" "tarball"
 
 msg_info "Building Koffan"
 cd /opt/koffan
-go build -o koffan main.go
+$STD go build -o koffan main.go
 msg_ok "Built Koffan"
 
 msg_info "Configuring Koffan"
-PASSWORD=$(openssl rand -base64 12)
+APP_PASSW=$(openssl rand -base64 12)
 mkdir /opt/koffan/data
 cat <<EOF >/opt/koffan/data/.env
 APP_ENV=production
-APP_PASSWORD=${PASSWORD}
+APP_PASSWORD=${APP_PASSW}
 PORT=3000
 DB_PATH=/opt/koffan/data/shopping.db
 EOF
-
 cat <<EOF >~/koffan.creds
-Password: ${PASSWORD}
+Password: ${APP_PASSW}
 EOF
 msg_ok "Configured Koffan"
 
