@@ -28,7 +28,21 @@ function update_script() {
     msg_error "No ${APP} Installation Found!"
     exit
   fi
-  msg_error "Currently we don't provide an update function for this ${APP}."
+
+  if check_for_gh_release "iventoy" "ventoy/PXE"; then
+    msg_info "Stopping iVentoy"
+    systemctl stop iventoy
+    msg_ok "Stopped iVentoy"
+
+    create_backup /opt/iventoy/data /opt/iventoy/iso
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "iventoy" "ventoy/PXE" "prebuild" "latest" "/opt/iventoy" "iventoy-*-linux-free.tar.gz"
+    restore_backup
+
+    msg_info "Starting iVentoy"
+    systemctl start iventoy
+    msg_ok "Started iVentoy"
+    msg_ok "Updated Successfully"
+  fi
   exit
 }
 
