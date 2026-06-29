@@ -35,8 +35,7 @@ function update_script() {
     systemctl stop fmd-server
     msg_ok "Stopped Service"
 
-    create_backup /opt/fmd-server/config.yml \
-      /opt/fmd-server/db/
+    create_backup /opt/fmd-server/config.yml /opt/fmd-server/db
 
     CLEAN_INSTALL=1 fetch_and_deploy_gl_release "fmd-server" "fmd-foss/fmd-server" "prebuild" "latest" "/opt/fmd-server" "fmd-server-*.zip"
 

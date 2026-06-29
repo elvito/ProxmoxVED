@@ -20,10 +20,10 @@ msg_info "Configuring fmd-server"
 cd /opt/fmd-server
 chmod +x fmd-server-*
 cp config.example.yml config.yml
-edit_yaml_config config.yml "WebDir" '"/opt/fmd-server/web/dist/"'
-edit_yaml_config config.yml "DatabaseDir" '"/opt/fmd-server/db/"'
-edit_yaml_config config.yml "ServerCrt" '"/etc/ssl/fmd-server/fmd-server.crt"'
-edit_yaml_config config.yml "ServerKey" '"/etc/ssl/fmd-server/fmd-server.key"'
+edit_yaml_config "config.yml" "WebDir" '"/opt/fmd-server/web/dist/"'
+edit_yaml_config "config.yml" "DatabaseDir" '"/opt/fmd-server/db/"'
+edit_yaml_config "config.yml" "ServerCrt" '"/etc/ssl/fmd-server/fmd-server.crt"'
+edit_yaml_config "config.yml" "ServerKey" '"/etc/ssl/fmd-server/fmd-server.key"'
 msg_ok "Configured fmd-server"
 
 msg_info "Creating services"
