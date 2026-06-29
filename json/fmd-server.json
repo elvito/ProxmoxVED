@@ -1,9 +1,7 @@
 {
   "name": "FMD-Server",
   "slug": "fmd-server",
-  "categories": [
-    9
-  ],
+  "categories": [9],
   "date_created": "2026-02-11",
   "type": "ct",
   "updateable": true,
@@ -12,7 +10,7 @@
   "interface_port": 8443,
   "documentation": "https://fmd-foss.org/docs/overview",
   "website": "https://fmd-foss.org/",
-  "logo": "requested",
+  "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/fmd.webp",
   "description": "FMD allows you to locate and remotely control your Android device. This is useful if you have lost or misplaced it. FMD is decentralised, and users remain in full control of their data. With FMD, you can send commands to your phone: to locate it via GPS, to locate it via nearby cell towers, to take a picture, to lock it, to let it ring, or to factory-reset it.",
   "install_methods": [
     {
