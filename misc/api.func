@@ -38,7 +38,7 @@ TELEMETRY_URL="https://telemetry.community-scripts.org/telemetry"
 # Progress pings (validation/configuring) use the short timeout
 TELEMETRY_TIMEOUT=5
 # Final status updates (success/failed) use the longer timeout
-# PocketBase may need more time under load (FindRecord + UpdateRecord)
+# (final reports carry the full error log, so allow more time under load)
 STATUS_TIMEOUT=10
 
 # ==============================================================================
@@ -520,10 +520,16 @@ get_error_log() {
   fi
 
   # Prefer the most complete/specific log; never downgrade to an unrelated one.
-  if [[ -n "${CTID:-}" && -n "${SESSION_ID:-}" ]]; then
-    local combined_log="/tmp/${NSAPP:-lxc}-${CTID}-${SESSION_ID}.log"
-    [[ -s "$combined_log" ]] && logfile="$combined_log"
-  fi
+  local candidate=""
+  for candidate in \
+    "${combined_log:-}" \
+    "/tmp/install-${SESSION_ID:-}-combined.log" \
+    "/tmp/${NSAPP:-lxc}-${CTID:-}-${SESSION_ID:-}.log"; do
+    if [[ -n "$candidate" && -s "$candidate" ]]; then
+      logfile="$candidate"
+      break
+    fi
+  done
   if [[ -z "$logfile" || ! -s "$logfile" ]] && [[ -n "${INSTALL_LOG:-}" && -s "${INSTALL_LOG}" ]]; then
     logfile="$INSTALL_LOG"
   fi
@@ -682,6 +688,22 @@ detect_ram() {
 }
 
 # ------------------------------------------------------------------------------
+# detect_arm()
+#
+# - Sets HAS_ARM to "true" when the install actually runs on arm64 hardware,
+#   otherwise "false". arm64 runs only occur for scripts that declare
+#   var_arm64=yes (arch_check exits on arm64 otherwise), so this is the precise
+#   per-install ARM signal used for telemetry highlighting.
+# ------------------------------------------------------------------------------
+detect_arm() {
+  HAS_ARM="false"
+  case "$(dpkg --print-architecture 2>/dev/null || uname -m)" in
+  arm64 | aarch64) HAS_ARM="true" ;;
+  esac
+  export HAS_ARM
+}
+
+# ------------------------------------------------------------------------------
 # post_to_api()
 #
 # - Sends LXC container creation statistics to telemetry ingest service
@@ -751,6 +773,9 @@ post_to_api() {
   fi
   local ram_speed="${RAM_SPEED:-}"
 
+  # Detect ARM64 (only relevant for var_arm64=yes scripts running on arm hardware)
+  [[ -z "${HAS_ARM:-}" ]] && detect_arm
+
   local JSON_PAYLOAD
   JSON_PAYLOAD=$(
     cat <<EOF
@@ -774,6 +799,7 @@ post_to_api() {
     "gpu_model": "${gpu_model}",
     "gpu_passthrough": "${gpu_passthrough}",
     "ram_speed": "${ram_speed}",
+    "has_arm": ${HAS_ARM:-false},
     "repo_source": "${REPO_SOURCE}",
     "repo_slug": "${REPO_SLUG:-}"
 }
@@ -868,6 +894,9 @@ post_to_api_vm() {
   fi
   local ram_speed="${RAM_SPEED:-}"
 
+  # Detect ARM64 (VMs are amd64-only today, but keep the field consistent)
+  [[ -z "${HAS_ARM:-}" ]] && detect_arm
+
   # Remove 'G' suffix from disk size
   local DISK_SIZE_API="${DISK_SIZE%G}"
 
@@ -894,6 +923,7 @@ post_to_api_vm() {
     "gpu_model": "${gpu_model}",
     "gpu_passthrough": "${gpu_passthrough}",
     "ram_speed": "${ram_speed}",
+    "has_arm": ${HAS_ARM:-false},
     "repo_source": "${REPO_SOURCE}",
     "repo_slug": "${REPO_SLUG:-}"
 }
@@ -990,6 +1020,9 @@ post_update_to_api() {
 
   # Get RAM info (if detected)
   local ram_speed="${RAM_SPEED:-}"
+
+  # Detect ARM64 (only relevant for var_arm64=yes scripts running on arm hardware)
+  [[ -z "${HAS_ARM:-}" ]] && detect_arm
 
   # Map status to telemetry values: installing, success, failed, unknown
   case "$status" in
@@ -1090,6 +1123,7 @@ post_update_to_api() {
     "gpu_model": "${gpu_model}",
     "gpu_passthrough": "${gpu_passthrough}",
     "ram_speed": "${ram_speed}",
+    "has_arm": ${HAS_ARM:-false},
     "repo_source": "${REPO_SOURCE}",
     "repo_slug": "${REPO_SLUG:-}"
 }
@@ -1134,6 +1168,7 @@ EOF
     "gpu_model": "${gpu_model}",
     "gpu_passthrough": "${gpu_passthrough}",
     "ram_speed": "${ram_speed}",
+    "has_arm": ${HAS_ARM:-false},
     "repo_source": "${REPO_SOURCE}",
     "repo_slug": "${REPO_SLUG:-}"
 }
@@ -1164,6 +1199,7 @@ EOF
     "error": "${medium_error}",
     "error_category": "${error_category}",
     "install_duration": ${duration},
+    "has_arm": ${HAS_ARM:-false},
     "repo_source": "${REPO_SOURCE}",
     "repo_slug": "${REPO_SLUG:-}"
 }
@@ -1476,117 +1512,4 @@ EOF
   curl -fsS -m "${TELEMETRY_TIMEOUT}" -X POST "${TELEMETRY_URL}" \
     -H "Content-Type: application/json" \
     -d "$JSON_PAYLOAD" &>/dev/null || true
-}
-
-# ------------------------------------------------------------------------------
-# post_update_to_api_extended()
-#
-# - Extended version of post_update_to_api with duration, GPU, and error category
-# - Same arguments as post_update_to_api:
-#   * $1: status ("done" or "failed")
-#   * $2: exit_code (numeric)
-# - Automatically includes:
-#   * Install duration (if start_install_timer was called)
-#   * Error category (for failed status)
-#   * GPU info (if detect_gpu was called)
-# ------------------------------------------------------------------------------
-post_update_to_api_extended() {
-  # Silent fail - telemetry should never break scripts
-  command -v curl &>/dev/null || return 0
-
-  # Prevent duplicate submissions
-  POST_UPDATE_DONE=${POST_UPDATE_DONE:-false}
-  [[ "$POST_UPDATE_DONE" == "true" ]] && return 0
-
-  [[ "${DIAGNOSTICS:-no}" == "no" ]] && return 0
-  [[ -z "${RANDOM_UUID:-}" ]] && return 0
-
-  local status="${1:-failed}"
-  local raw_exit_code="${2:-1}"
-  local exit_code=0 error="" pb_status error_category=""
-  local duration gpu_vendor gpu_passthrough
-
-  # Get duration
-  duration=$(get_install_duration)
-
-  # Get GPU info (if detected)
-  gpu_vendor="${GPU_VENDOR:-}"
-  gpu_passthrough="${GPU_PASSTHROUGH:-}"
-
-  # Map status to telemetry values
-  case "$status" in
-  done | success)
-    pb_status="success"
-    exit_code=0
-    error=""
-    error_category=""
-    ;;
-  failed)
-    pb_status="failed"
-    ;;
-  *)
-    pb_status="unknown"
-    ;;
-  esac
-
-  # For failed/unknown status, resolve exit code and error description
-  if [[ "$pb_status" == "failed" ]] || [[ "$pb_status" == "unknown" ]]; then
-    if [[ "$raw_exit_code" =~ ^[0-9]+$ ]]; then
-      exit_code="$raw_exit_code"
-    else
-      exit_code=1
-    fi
-    local error_text=""
-    error_text=$(get_error_text)
-    local full_error
-    full_error=$(build_error_string "$exit_code" "$error_text")
-    error=$(json_escape "$full_error")
-    error_category=$(categorize_error "$exit_code")
-    [[ -z "$error" ]] && error="Unknown error"
-  fi
-
-  local JSON_PAYLOAD
-  JSON_PAYLOAD=$(
-    cat <<EOF
-{
-    "random_id": "${RANDOM_UUID}",
-    "execution_id": "${EXECUTION_ID:-${RANDOM_UUID}}",
-    "type": "${TELEMETRY_TYPE:-lxc}",
-    "nsapp": "${NSAPP:-unknown}",
-    "status": "${pb_status}",
-    "exit_code": ${exit_code},
-    "error": "${error}",
-    "error_category": "${error_category}",
-    "install_duration": ${duration:-0},
-    "gpu_vendor": "${gpu_vendor}",
-    "gpu_passthrough": "${gpu_passthrough}",
-    "repo_source": "${REPO_SOURCE}",
-    "repo_slug": "${REPO_SLUG:-}"
-}
-EOF
-  )
-
-  local http_code
-  http_code=$(curl -sS -w "%{http_code}" -m "${STATUS_TIMEOUT}" -X POST "${TELEMETRY_URL}" \
-    -H "Content-Type: application/json" \
-    -d "$JSON_PAYLOAD" -o /dev/null 2>/dev/null) || http_code="000"
-
-  if [[ "$http_code" =~ ^2[0-9]{2}$ ]]; then
-    POST_UPDATE_DONE=true
-    return 0
-  fi
-
-  # Retry with minimal payload
-  sleep 1
-  http_code=$(curl -sS -w "%{http_code}" -m "${STATUS_TIMEOUT}" -X POST "${TELEMETRY_URL}" \
-    -H "Content-Type: application/json" \
-    -d "{\"random_id\":\"${RANDOM_UUID}\",\"execution_id\":\"${EXECUTION_ID:-${RANDOM_UUID}}\",\"type\":\"${TELEMETRY_TYPE:-lxc}\",\"nsapp\":\"${NSAPP:-unknown}\",\"status\":\"${pb_status}\",\"exit_code\":${exit_code},\"install_duration\":${duration:-0},\"repo_source\":\"${REPO_SOURCE}\",\"repo_slug\":\"${REPO_SLUG:-}\"}" \
-    -o /dev/null 2>/dev/null) || http_code="000"
-
-  if [[ "$http_code" =~ ^2[0-9]{2}$ ]]; then
-    POST_UPDATE_DONE=true
-    return 0
-  fi
-
-  # Do NOT set POST_UPDATE_DONE=true — let EXIT trap retry
 }

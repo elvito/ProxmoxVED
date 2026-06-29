@@ -4931,10 +4931,7 @@ PROFILE
   if [[ $install_exit_code -ne 0 ]]; then
     msg_error "Installation failed in container ${CTID} (exit code: ${install_exit_code})"
 
-    # Report failure to telemetry API
-    post_update_to_api "failed" "$install_exit_code"
-
-    # Copy both logs from container before potential deletion
+    # Copy both logs from container before telemetry (error trace needs the full log)
     local build_log_copied=false
     local install_log_copied=false
 
@@ -4980,6 +4977,15 @@ PROFILE
       echo ""
       echo -e "${GN}✔${CL} Installation log: ${BL}${combined_log}${CL}"
     fi
+
+    # Point INSTALL_LOG at the combined log so telemetry captures the real failure
+    if [[ -s "${combined_log:-}" ]]; then
+      INSTALL_LOG="$combined_log"
+      export INSTALL_LOG
+    fi
+
+    # Report failure to telemetry API (after logs are on the host)
+    post_update_to_api "failed" "$install_exit_code"
 
     # Dev mode: Keep container or open breakpoint shell
     if [[ "${DEV_MODE_KEEP:-false}" == "true" ]]; then
@@ -6490,8 +6496,15 @@ ensure_log_on_host() {
 
   # Try pulling from container and creating combined log
   if [[ -n "${CTID:-}" && -n "${SESSION_ID:-}" ]] && command -v pct &>/dev/null; then
-    local combined_log="/tmp/${NSAPP:-lxc}-${CTID}-${SESSION_ID}.log"
-    if [[ ! -s "$combined_log" ]]; then
+    local host_combined=""
+    if [[ -n "${combined_log:-}" && -s "${combined_log}" ]]; then
+      host_combined="$combined_log"
+    elif [[ -s "/tmp/install-${SESSION_ID}-combined.log" ]]; then
+      host_combined="/tmp/install-${SESSION_ID}-combined.log"
+    else
+      host_combined="/tmp/${NSAPP:-lxc}-${CTID}-${SESSION_ID}.log"
+    fi
+    if [[ ! -s "$host_combined" ]]; then
       # Create combined log
       {
         echo "================================================================================"
@@ -6501,7 +6514,7 @@ ensure_log_on_host() {
         echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
         echo "================================================================================"
         echo ""
-      } >"$combined_log" 2>/dev/null || return 0
+      } >"$host_combined" 2>/dev/null || return 0
       # Append BUILD_LOG if it exists
       if [[ -f "${BUILD_LOG:-}" ]]; then
         {
@@ -6510,7 +6523,7 @@ ensure_log_on_host() {
           echo "================================================================================"
           cat "${BUILD_LOG}"
           echo ""
-        } >>"$combined_log"
+        } >>"$host_combined"
       fi
       # Pull INSTALL_LOG from container (with timeout to prevent hangs on dead containers)
       local temp_log="/tmp/.install-temp-${SESSION_ID}.log"
@@ -6521,12 +6534,12 @@ ensure_log_on_host() {
           echo "================================================================================"
           cat "$temp_log"
           echo ""
-        } >>"$combined_log"
+        } >>"$host_combined"
         rm -f "$temp_log"
       fi
     fi
-    if [[ -s "$combined_log" ]]; then
-      INSTALL_LOG="$combined_log"
+    if [[ -s "$host_combined" ]]; then
+      INSTALL_LOG="$host_combined"
     fi
   fi
 }
@@ -6535,7 +6548,7 @@ ensure_log_on_host() {
 # api_exit_script()
 #
 # - Exit trap handler for reporting to API telemetry
-# - Captures exit code and reports to PocketBase using centralized error descriptions
+# - Captures exit code and reports to the telemetry service using centralized error descriptions
 # - Uses explain_exit_code() from api.func for consistent error messages
 # - ALWAYS sends telemetry FIRST before log collection to prevent pct pull
 #   hangs from blocking status updates (container may be dead/unresponsive)
