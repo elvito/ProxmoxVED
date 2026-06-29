@@ -14,15 +14,13 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apt install -y \
-  build-essential
+$STD apt install -y build-essential
 msg_ok "Installed Dependencies"
 
 NODE_VERSION="24" setup_nodejs
 PG_VERSION="17" setup_postgresql
 PG_DB_NAME="oxicloud" PG_DB_USER="oxicloud" setup_postgresql_db
 fetch_and_deploy_gh_release "OxiCloud" "DioCrafts/OxiCloud" "tarball" "latest" "/opt/oxicloud"
-# Extract pinned Rust toolchain from Dockerfile (e.g. "FROM rust:1.96-alpine3.24" -> 1.96)
 TOOLCHAIN="$(grep -oP 'FROM\s+rust:\K[0-9]+\.[0-9]+(\.[0-9]+)?' /opt/oxicloud/Dockerfile | head -1)"
 RUST_TOOLCHAIN="${TOOLCHAIN:-stable}" setup_rust
 
@@ -36,14 +34,11 @@ msg_info "Building OxiCloud (Patience)"
 cd /opt/oxicloud
 export DATABASE_URL="postgres://${PG_DB_USER}:${PG_DB_PASS}@localhost/${PG_DB_NAME}"
 export RUSTFLAGS="-C target-cpu=native"
-# aws-sdk-s3 + aws-lc-sys can use ~1.5 GiB per rustc job under LTO+codegen-units=1.
-# Cap concurrency by RAM to avoid SIGKILL on small containers (issue #1513).
 RAM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
 CARGO_JOBS=$((RAM_MB / 1536))
 [[ $CARGO_JOBS -lt 1 ]] && CARGO_JOBS=1
 $STD cargo build --release -j "$CARGO_JOBS"
 mv target/release/oxicloud /usr/bin/oxicloud && chmod +x /usr/bin/oxicloud
-# Reclaim ~3 GB of build artifacts; keep source for updates.
 rm -rf /opt/oxicloud/target /opt/oxicloud/frontend/node_modules
 msg_ok "Built OxiCloud"
 

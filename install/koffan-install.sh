@@ -26,16 +26,16 @@ $STD go build -o koffan main.go
 msg_ok "Built Koffan"
 
 msg_info "Configuring Koffan"
-APP_PASSW=$(openssl rand -base64 12)
+APP_PASSWD=$(openssl rand -base64 12)
 mkdir /opt/koffan/data
 cat <<EOF >/opt/koffan/data/.env
 APP_ENV=production
-APP_PASSWORD=${APP_PASSW}
+APP_PASSWORD=${APP_PASSWD}
 PORT=3000
 DB_PATH=/opt/koffan/data/shopping.db
 EOF
 cat <<EOF >~/koffan.creds
-Password: ${APP_PASSW}
+Password: ${APP_PASSWD}
 EOF
 msg_ok "Configured Koffan"
 
