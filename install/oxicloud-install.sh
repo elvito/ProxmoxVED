@@ -35,10 +35,14 @@ cd /opt/oxicloud
 export DATABASE_URL="postgres://${PG_DB_USER}:${PG_DB_PASS}@localhost/${PG_DB_NAME}"
 export RUSTFLAGS="-C target-cpu=native"
 RAM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
-CARGO_JOBS=$((RAM_MB / 1536))
+CARGO_JOBS=$((RAM_MB / 2560))
 [[ $CARGO_JOBS -lt 1 ]] && CARGO_JOBS=1
-$STD cargo build --release -j "$CARGO_JOBS"
-mv target/release/oxicloud /usr/bin/oxicloud && chmod +x /usr/bin/oxicloud
+[[ $CARGO_JOBS -gt $(nproc) ]] && CARGO_JOBS=$(nproc)
+$STD cargo build --release -j "$CARGO_JOBS" --bin oxicloud --bin migrate-nfc-filenames
+mv target/release/oxicloud /usr/local/bin/oxicloud
+mv target/release/migrate-nfc-filenames /usr/local/bin/migrate-nfc-filenames
+rm -rf /opt/oxicloud/static
+mv /opt/oxicloud/static-dist /opt/oxicloud/static
 rm -rf /opt/oxicloud/target /opt/oxicloud/frontend/node_modules
 msg_ok "Built OxiCloud"
 
@@ -46,7 +50,7 @@ msg_info "Configuring OxiCloud"
 mkdir -p {/mnt/oxicloud,/etc/oxicloud}
 sed -e 's|OXICLOUD_STORAGE_PATH=.*|OXICLOUD_STORAGE_PATH=/mnt/oxicloud|' \
   -e 's|OXICLOUD_SERVER_HOST=.*|OXICLOUD_SERVER_HOST=0.0.0.0|' \
-  -e 's|OXICLOUD_STATIC_PATH=.*|OXICLOUD_STATIC_PATH=/opt/oxicloud/static-dist|' \
+  -e 's|OXICLOUD_STATIC_PATH=.*|OXICLOUD_STATIC_PATH=/opt/oxicloud/static|' \
   -e "s|^#OXICLOUD_BASE_URL=.*|OXICLOUD_BASE_URL=http://${LOCAL_IP}:8086|" \
   -e "s|OXICLOUD_DB_CONNECTION_STRING=.*|OXICLOUD_DB_CONNECTION_STRING=${DATABASE_URL}|" \
   -e "s|^DATABASE_URL=.*|DATABASE_URL=${DATABASE_URL}|" \
@@ -59,13 +63,15 @@ msg_info "Creating OxiCloud Service"
 cat <<EOF >/etc/systemd/system/oxicloud.service
 [Unit]
 Description=OxiCloud Service
-After=network.target
+After=network.target postgresql.service
+Requires=postgresql.service
 
 [Service]
 Type=simple
 User=root
+WorkingDirectory=/opt/oxicloud
 EnvironmentFile=/etc/oxicloud/.env
-ExecStart=/usr/bin/oxicloud
+ExecStart=/usr/local/bin/oxicloud
 Restart=always
 RestartSec=5
 StandardOutput=journal

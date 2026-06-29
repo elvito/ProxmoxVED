@@ -8,7 +8,7 @@ source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxV
 
 APP="OxiCloud"
 var_tags="${var_tags:-files;documents}"
-var_cpu="${var_cpu:-2}"
+var_cpu="${var_cpu:-4}"
 var_ram="${var_ram:-4096}"
 var_disk="${var_disk:-20}"
 var_os="${var_os:-debian}"
@@ -37,20 +37,38 @@ function update_script() {
     msg_ok "Stopped OxiCloud"
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "OxiCloud" "DioCrafts/OxiCloud" "tarball" "latest" "/opt/oxicloud"
-    TOOLCHAIN="$(sed -n '2s/[^:]*://p' /opt/oxicloud/Dockerfile | awk -F- '{print $1}')"
-    RUST_TOOLCHAIN=$TOOLCHAIN setup_rust
+    TOOLCHAIN="$(grep -oP 'FROM\s+rust:\K[0-9]+\.[0-9]+(\.[0-9]+)?' /opt/oxicloud/Dockerfile | head -1)"
+    RUST_TOOLCHAIN="${TOOLCHAIN:-stable}" setup_rust
 
-    msg_info "Updating OxiCloud"
+    msg_info "Building Frontend SPA"
+    cd /opt/oxicloud/frontend
+    $STD npm ci
+    $STD npm run build
+    msg_ok "Built Frontend SPA"
+
+    msg_info "Updating OxiCloud (Patience)"
+    set -a
     source /etc/oxicloud/.env
+    set +a
     cd /opt/oxicloud
     export DATABASE_URL
     export RUSTFLAGS="-C target-cpu=native"
-    $STD cargo build --release
-    mv target/release/oxicloud /usr/bin/oxicloud && chmod +x /usr/bin/oxicloud
+    RAM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+    CARGO_JOBS=$((RAM_MB / 2560))
+    [[ $CARGO_JOBS -lt 1 ]] && CARGO_JOBS=1
+    [[ $CARGO_JOBS -gt $(nproc) ]] && CARGO_JOBS=$(nproc)
+    $STD cargo build --release -j "$CARGO_JOBS" --bin oxicloud --bin migrate-nfc-filenames
+    mv target/release/oxicloud /usr/local/bin/oxicloud
+    mv target/release/migrate-nfc-filenames /usr/local/bin/migrate-nfc-filenames
+    chmod +x /usr/local/bin/oxicloud /usr/local/bin/migrate-nfc-filenames
+    rm -f /usr/bin/oxicloud
+    rm -rf /opt/oxicloud/static
+    mv /opt/oxicloud/static-dist /opt/oxicloud/static
+    rm -rf /opt/oxicloud/target /opt/oxicloud/frontend/node_modules
     msg_ok "Updated OxiCloud"
 
     msg_info "Starting OxiCloud"
-    $STD systemctl start oxicloud
+    systemctl start oxicloud
     msg_ok "Started OxiCloud"
     msg_ok "Updated successfully!"
   fi
