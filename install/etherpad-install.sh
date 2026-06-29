@@ -27,18 +27,7 @@ export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 $STD corepack enable
 msg_ok "Enabled pnpm"
 
-# msg_info "Creating etherpad User"
-# addgroup --system etherpad
-# useradd --system --create-home --home-dir /var/lib/etherpad --shell /usr/sbin/nologin etherpad -g etherpad
-# msg_ok "Created etherpad User"
-
 fetch_and_deploy_gh_release "etherpad-lite" "ether/etherpad" "tarball"
-
-# msg_info "Building Etherpad"
-# chown -R etherpad:etherpad /opt/etherpad-lite
-# $STD runuser -u etherpad -- env HOME=/var/lib/etherpad COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
-#   bash -c 'cd /opt/etherpad-lite && pnpm install --frozen-lockfile && pnpm run build:etherpad'
-# msg_ok "Built Etherpad"
 
 msg_info "Building Etherpad"
 cd /opt/etherpad-lite
@@ -48,14 +37,12 @@ msg_ok "Built Etherpad"
 
 msg_info "Configuring Etherpad"
 cp /opt/etherpad-lite/settings.json.template /opt/etherpad-lite/settings.json
-# install -d -o etherpad -g etherpad -m 0750 /var/lib/etherpad
 mkdir -p /var/lib/etherpad
 sed -i \
   -e 's#"ip": *"127.0.0.1"#"ip": "0.0.0.0"#' \
   -e 's#"dbType" *: *"dirty"#"dbType": "sqlite"#' \
   -e 's#"filename" *: *"var/dirty.db"#"filename": "/var/lib/etherpad/etherpad.db"#' \
   /opt/etherpad-lite/settings.json
-# chown -R etherpad:etherpad /opt/etherpad-lite
 msg_ok "Configured Etherpad"
 
 msg_info "Creating Service"
@@ -82,7 +69,6 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 systemctl enable -q --now etherpad
-systemctl restart etherpad
 msg_ok "Created Service"
 
 motd_ssh
