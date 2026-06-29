@@ -35,7 +35,7 @@ function update_script() {
     msg_ok "Stopped iVentoy"
 
     create_backup /opt/iventoy/data /opt/iventoy/iso
-    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "iventoy" "ventoy/PXE" "prebuild" "latest" "/opt/iventoy" "iventoy-*-linux-free.tar.gz"
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "iventoy" "ventoy/PXE" "prebuild" "latest" "/opt/iventoy" "iventoy-*-linux-x86_64-free.tar.gz"
     restore_backup
 
     msg_info "Starting iVentoy"
