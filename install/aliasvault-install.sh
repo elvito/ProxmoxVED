@@ -51,6 +51,10 @@ msg_info "Building Core Libraries (Patience)"
 source "$HOME/.cargo/env"
 $STD rustup target add wasm32-unknown-unknown
 cd /opt/aliasvault/core
+# Upstream ships year-hardcoded tests (AgeRangeConverter) that fail after 2025-12-31
+# and abort the build via `set -e` + `npm run test && npm run build`. Strip the
+# test step from per-package build.sh so the actual build always runs.
+find /opt/aliasvault/core -name build.sh -exec sed -i 's/npm run test &&[[:space:]]*//g' {} +
 $STD bash build-and-distribute.sh --browser
 msg_ok "Built Core Libraries"
 
