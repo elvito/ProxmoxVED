@@ -34,7 +34,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/opt/fmd-server
-ExecStart=/opt/fmd-server/fmd-server-$(arch_resolve "amd64" "arm64") serve
+ExecStart=/opt/fmd-server/fmd-server-$(arch_resolve) serve
 Restart=always
 
 [Install]
