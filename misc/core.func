@@ -636,8 +636,10 @@ msg_info() {
   if ! declare -p MSG_INFO_SHOWN &>/dev/null || ! declare -A MSG_INFO_SHOWN &>/dev/null; then
     declare -gA MSG_INFO_SHOWN=()
   fi
-  [[ -n "${MSG_INFO_SHOWN["$msg"]+x}" ]] && return
-  MSG_INFO_SHOWN["$msg"]=1
+  local sanitized_key
+  sanitized_key=$(printf '%s' "$msg" | sed 's/\x1b\[[0-9;]*m//g; s/[^a-zA-Z0-9_]/_/g')
+  [[ -n "${MSG_INFO_SHOWN["$sanitized_key"]+x}" ]] && return
+  MSG_INFO_SHOWN["$sanitized_key"]=1
 
   # Log to file
   log_msg "[INFO] $msg"
@@ -686,9 +688,9 @@ msg_ok() {
   clear_line
   echo -e "$CM ${GN}${msg}${CL}"
   log_msg "[OK] $msg"
-  local sanitized_msg
-  sanitized_msg=$(printf '%s' "$msg" | sed 's/\x1b\[[0-9;]*m//g; s/[^a-zA-Z0-9_]/_/g')
-  unset 'MSG_INFO_SHOWN['"$sanitized_msg"']' 2>/dev/null || true
+  local sanitized_key
+  sanitized_key=$(printf '%s' "$msg" | sed 's/\x1b\[[0-9;]*m//g; s/[^a-zA-Z0-9_]/_/g')
+  unset 'MSG_INFO_SHOWN['"$sanitized_key"']' 2>/dev/null || true
 }
 
 # ------------------------------------------------------------------------------
@@ -1582,6 +1584,76 @@ check_or_create_swap() {
 #   - Loads from /run/local-ip.env or performs runtime lookup
 # ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+# _get_current_ip()
+#
+# - Internal helper: detects the container's primary IP address
+# - Tries eth0 interface first, then hostname -I, then routing table
+# - Falls back to IPv6 if no IPv4 address found
+# - Returns IP on stdout, or empty string on failure
+# ------------------------------------------------------------------------------
+_get_current_ip() {
+  local ip
+
+  # Try direct interface lookup for eth0 FIRST (most reliable for LXC) - IPv4
+  ip=$(ip -4 addr show eth0 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | head -n1)
+  if [[ -n "$ip" && "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "$ip"
+    return 0
+  fi
+
+  # Fallback: Try hostname -I (returns IPv4 first if available)
+  if command -v hostname >/dev/null 2>&1; then
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    if [[ -n "$ip" && "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      echo "$ip"
+      return 0
+    fi
+  fi
+
+  # Try routing table with IPv4 targets
+  local ipv4_targets=("8.8.8.8" "1.1.1.1" "default")
+  for target in "${ipv4_targets[@]}"; do
+    if [[ "$target" == "default" ]]; then
+      ip=$(ip route get 1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')
+    else
+      ip=$(ip route get "$target" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')
+    fi
+    if [[ -n "$ip" ]]; then
+      echo "$ip"
+      return 0
+    fi
+  done
+
+  # IPv6 fallback: Try direct interface lookup for eth0
+  ip=$(ip -6 addr show eth0 scope global 2>/dev/null | awk '/inet6 / {print $2}' | cut -d/ -f1 | head -n1)
+  if [[ -n "$ip" && "$ip" =~ : ]]; then
+    echo "$ip"
+    return 0
+  fi
+
+  # IPv6 fallback: Try hostname -I for IPv6
+  if command -v hostname >/dev/null 2>&1; then
+    ip=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E ':' | head -n1)
+    if [[ -n "$ip" && "$ip" =~ : ]]; then
+      echo "$ip"
+      return 0
+    fi
+  fi
+
+  # IPv6 fallback: Use routing table with IPv6 targets
+  local ipv6_targets=("2001:4860:4860::8888" "2606:4700:4700::1111")
+  for target in "${ipv6_targets[@]}"; do
+    ip=$(ip -6 route get "$target" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')
+    if [[ -n "$ip" && "$ip" =~ : ]]; then
+      echo "$ip"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 function get_lxc_ip() {
   local IP_FILE="/run/local-ip.env"
   if [[ -f "$IP_FILE" ]]; then
@@ -1590,69 +1662,7 @@ function get_lxc_ip() {
   fi
 
   if [[ -z "${LOCAL_IP:-}" ]]; then
-    get_current_ip() {
-      local ip
-
-      # Try direct interface lookup for eth0 FIRST (most reliable for LXC) - IPv4
-      ip=$(ip -4 addr show eth0 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | head -n1)
-      if [[ -n "$ip" && "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        echo "$ip"
-        return 0
-      fi
-
-      # Fallback: Try hostname -I (returns IPv4 first if available)
-      if command -v hostname >/dev/null 2>&1; then
-        ip=$(hostname -I 2>/dev/null | awk '{print $1}')
-        if [[ -n "$ip" && "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "$ip"
-          return 0
-        fi
-      fi
-
-      # Try routing table with IPv4 targets
-      local ipv4_targets=("8.8.8.8" "1.1.1.1" "default")
-      for target in "${ipv4_targets[@]}"; do
-        if [[ "$target" == "default" ]]; then
-          ip=$(ip route get 1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')
-        else
-          ip=$(ip route get "$target" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')
-        fi
-        if [[ -n "$ip" ]]; then
-          echo "$ip"
-          return 0
-        fi
-      done
-
-      # IPv6 fallback: Try direct interface lookup for eth0
-      ip=$(ip -6 addr show eth0 scope global 2>/dev/null | awk '/inet6 / {print $2}' | cut -d/ -f1 | head -n1)
-      if [[ -n "$ip" && "$ip" =~ : ]]; then
-        echo "$ip"
-        return 0
-      fi
-
-      # IPv6 fallback: Try hostname -I for IPv6
-      if command -v hostname >/dev/null 2>&1; then
-        ip=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E ':' | head -n1)
-        if [[ -n "$ip" && "$ip" =~ : ]]; then
-          echo "$ip"
-          return 0
-        fi
-      fi
-
-      # IPv6 fallback: Use routing table with IPv6 targets
-      local ipv6_targets=("2001:4860:4860::8888" "2606:4700:4700::1111")
-      for target in "${ipv6_targets[@]}"; do
-        ip=$(ip -6 route get "$target" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')
-        if [[ -n "$ip" && "$ip" =~ : ]]; then
-          echo "$ip"
-          return 0
-        fi
-      done
-
-      return 1
-    }
-
-    LOCAL_IP="$(get_current_ip || true)"
+    LOCAL_IP="$(_get_current_ip || true)"
     if [[ -z "$LOCAL_IP" ]]; then
       msg_error "Could not determine LOCAL_IP"
       return 1
