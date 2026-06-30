@@ -209,59 +209,48 @@ download_gpg_key() {
   local url="$1"
   local output="$2"
   local mode="${3:-auto}" # auto, dearmor, or binary
-  local retries="${CURL_RETRIES:-3}"
-  local timeout="${CURL_TIMEOUT:-30}"
   local temp_key
   temp_key=$(mktemp)
 
   mkdir -p "$(dirname "$output")"
 
-  local attempt=1
-  while [[ $attempt -le $retries ]]; do
-    debug_log "GPG key download attempt $attempt/$retries: $url"
+  # Download to temp file using curl_with_retry
+  if ! curl_with_retry "$url" "$temp_key"; then
+    rm -f "$temp_key"
+    debug_log "GPG key download FAILED: $url"
+    return 7
+  fi
 
-    # Download to temp file first
-    if ! curl -fsSL --connect-timeout 10 --max-time "$timeout" -o "$temp_key" "$url" 2>/dev/null; then
-      debug_log "GPG key download attempt $attempt failed, waiting ${attempt}s..."
-      sleep "$attempt"
-      ((attempt++))
-      continue
-    fi
-
-    # Auto-detect key format if mode is auto
-    if [[ "$mode" == "auto" ]]; then
-      if file "$temp_key" 2>/dev/null | grep -qi "pgp\\|gpg\\|public key"; then
-        mode="binary"
-      elif grep -q "BEGIN PGP" "$temp_key" 2>/dev/null; then
-        mode="dearmor"
-      else
-        # Try to detect by extension
-        [[ "$url" == *.asc || "$url" == *.txt ]] && mode="dearmor" || mode="binary"
-      fi
-    fi
-
-    # Process based on mode
-    if [[ "$mode" == "dearmor" ]]; then
-      if gpg --dearmor --yes -o "$output" <"$temp_key" 2>/dev/null && [[ -s "$output" ]]; then
-        rm -f "$temp_key"
-        debug_log "GPG key installed (dearmored): $output"
-        return 0
-      fi
+  # Auto-detect key format if mode is auto
+  if [[ "$mode" == "auto" ]]; then
+    if file "$temp_key" 2>/dev/null | grep -qi "pgp\\|gpg\\|public key"; then
+      mode="binary"
+    elif grep -q "BEGIN PGP" "$temp_key" 2>/dev/null; then
+      mode="dearmor"
     else
-      if mv "$temp_key" "$output" 2>/dev/null; then
-        chmod 644 "$output"
-        debug_log "GPG key installed: $output"
-        return 0
-      fi
+      # Try to detect by extension
+      [[ "$url" == *.asc || "$url" == *.txt ]] && mode="dearmor" || mode="binary"
     fi
+  fi
 
-    debug_log "GPG key processing attempt $attempt failed"
-    sleep "$attempt"
-    ((attempt++))
-  done
+  # Process based on mode
+  if [[ "$mode" == "dearmor" ]]; then
+    if gpg --dearmor --yes -o "$output" <"$temp_key" 2>/dev/null && [[ -s "$output" ]]; then
+      rm -f "$temp_key"
+      chmod 644 "$output"
+      debug_log "GPG key installed (dearmored): $output"
+      return 0
+    fi
+  else
+    if mv "$temp_key" "$output" 2>/dev/null; then
+      chmod 644 "$output"
+      debug_log "GPG key installed: $output"
+      return 0
+    fi
+  fi
 
   rm -f "$temp_key"
-  debug_log "GPG key download FAILED after $retries attempts: $url"
+  debug_log "GPG key processing FAILED: $url"
   return 7
 }
 
@@ -529,8 +518,26 @@ upgrade_packages_with_retry() {
 
 # ------------------------------------------------------------------------------
 # Check if tool is already installed and optionally verify exact version
-# Returns: 0 if installed (with optional version match), 1 if not installed
-# Usage: is_tool_installed "mariadb" "11.4" || echo "Not installed"
+#
+# Usage:
+#   # Check if tool is installed (any version)
+#   if version=$(is_tool_installed "nodejs"); then
+#     echo "Node.js $version is installed"
+#   fi
+#
+#   # Check if a specific version is installed
+#   if version=$(is_tool_installed "mariadb" "11.4"); then
+#     echo "MariaDB 11.4 is installed"
+#   fi
+#
+# Returns: 0 if installed (installed_version echoed to stdout)
+#          1 if not installed (nothing on stdout)
+#          2 if installed but version mismatch (installed_version echoed to stdout)
+#
+# Note: Always check the exit code, NOT stdout alone!
+#       - return 0 + version on stdout = installed (with optional version match)
+#       - return 2 + version on stdout = installed but version mismatch
+#       - return 1 + nothing on stdout = not installed
 # ------------------------------------------------------------------------------
 is_tool_installed() {
   local tool_name="$1"
@@ -590,17 +597,20 @@ is_tool_installed() {
     ;;
   esac
 
+  # Not installed
   if [[ -z "$installed_version" ]]; then
-    return 1 # Not installed
+    return 1
   fi
 
+  # Installed but version doesn't match (if a specific version was requested)
   if [[ -n "$required_version" && "$installed_version" != "$required_version" ]]; then
     echo "$installed_version"
-    return 1 # Version mismatch
+    return 2
   fi
 
+  # Installed (and version matches, if specified)
   echo "$installed_version"
-  return 0 # Installed and version matches (if specified)
+  return 0
 }
 
 # ------------------------------------------------------------------------------
