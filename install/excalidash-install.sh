@@ -26,12 +26,13 @@ PG_DB_NAME="excalidash" PG_DB_USER="excalidash" setup_postgresql_db
 
 fetch_and_deploy_gh_release "excalidash" "ZimengXiong/ExcaliDash" "tarball"
 
-# msg_info "Configuring Database Provider"
+msg_info "Configuring Database Provider"
 cd /opt/excalidash/backend
 sed -i '/datasource db {/,/}/ s/provider = env("[^"]*")/provider = "postgresql"/' prisma/schema.prisma
 sed -i '/datasource db {/,/}/ s/provider = "[^"]*"/provider = "postgresql"/' prisma/schema.prisma
-rm -rf prisma/migrations/sqlite
-# msg_ok "Configured Database Provider"
+mv prisma/migrations/postgresql/* prisma/migrations/
+rm -rf prisma/migrations/sqlite prisma/migrations/postgresql
+msg_ok "Configured Database Provider"
 
 msg_info "Building Backend"
 cd /opt/excalidash/backend
