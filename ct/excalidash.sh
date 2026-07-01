@@ -36,7 +36,6 @@ function update_script() {
     msg_ok "Stopped Service"
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "excalidash" "ZimengXiong/ExcaliDash" "tarball"
-
     ln -sf /opt/excalidash_data/.env /opt/excalidash/backend/.env
 
     msg_info "Rebuilding Application"

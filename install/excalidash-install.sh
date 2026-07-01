@@ -21,8 +21,17 @@ $STD apt install -y \
 msg_ok "Installed Dependencies"
 
 NODE_VERSION="20" setup_nodejs
+PG_VERSION="18" setup_postgresql
+PG_DB_NAME="excalidash" PG_DB_USER="excalidash" setup_postgresql_db
 
 fetch_and_deploy_gh_release "excalidash" "ZimengXiong/ExcaliDash" "tarball"
+
+# msg_info "Configuring Database Provider"
+# cd /opt/excalidash/backend
+# sed -i '/datasource db {/,/}/ s/provider = env("[^"]*")/provider = "postgresql"/' prisma/schema.prisma
+# sed -i '/datasource db {/,/}/ s/provider = "[^"]*"/provider = "postgresql"/' prisma/schema.prisma
+# rm -rf prisma/migrations/sqlite
+# msg_ok "Configured Database Provider"
 
 msg_info "Building Backend"
 cd /opt/excalidash/backend
@@ -42,7 +51,8 @@ mkdir -p /opt/excalidash_data
 mkdir -p /var/www/excalidash
 cp -r /opt/excalidash/frontend/dist/. /var/www/excalidash/
 cat <<EOF >/opt/excalidash_data/.env
-DATABASE_URL=file:/opt/excalidash_data/database.db
+DATABASE_PROVIDER=postgresql
+DATABASE_URL=postgresql://${PG_DB_USER}:${PG_DB_PASS}@localhost:5432/${PG_DB_NAME}
 PORT=8000
 NODE_ENV=production
 FRONTEND_URL=http://${LOCAL_IP}:6767
@@ -107,7 +117,7 @@ msg_info "Creating Service"
 cat <<EOF >/etc/systemd/system/excalidash.service
 [Unit]
 Description=ExcaliDash Service
-After=network.target
+After=network.target postgresql.service
 
 [Service]
 Type=simple
