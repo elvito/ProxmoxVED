@@ -37,9 +37,16 @@ function update_script() {
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "excalidash" "ZimengXiong/ExcaliDash" "tarball"
     ln -sf /opt/excalidash_data/.env /opt/excalidash/backend/.env
+    set -a && source /opt/excalidash_data/.env && set +a
+
+    msg_info "Configuring Database Provider (${DATABASE_PROVIDER:-sqlite})"
+    cd /opt/excalidash/backend
+    sed -i '/datasource db {/,/}/ s/provider = env("[^"]*")/provider = "'"${DATABASE_PROVIDER:-sqlite}"'"/' prisma/schema.prisma
+    mv prisma/migrations/"${DATABASE_PROVIDER:-sqlite}"/* prisma/migrations/
+    rm -rf prisma/migrations/postgresql prisma/migrations/sqlite
+    msg_ok "Configured Database Provider"
 
     msg_info "Rebuilding Application"
-    cd /opt/excalidash/backend
     $STD npm ci
     $STD npx prisma generate
     $STD npx tsc
@@ -51,7 +58,6 @@ function update_script() {
 
     msg_info "Running Migrations"
     cd /opt/excalidash/backend
-    set -a && source /opt/excalidash_data/.env && set +a
     $STD npx prisma migrate deploy
     msg_ok "Ran Migrations"
 
