@@ -38,7 +38,7 @@ Link: #
 
 ## 🔍 Code & Security Review  (**X** in brackets) 
 
-- [ ] **Follows `Code_Audit.md` & `CONTRIBUTING.md` guidelines**  
+- [ ] **Follows `CODE-AUDIT.md` & `CONTRIBUTING.md` guidelines**  
 - [ ] **Uses correct script structure (`AppName.sh`, `AppName-install.sh`, `AppName.json`)**  
 - [ ] **No hardcoded credentials**  
 
