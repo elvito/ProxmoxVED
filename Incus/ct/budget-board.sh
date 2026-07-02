@@ -5,7 +5,7 @@ source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxV
 # License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/teelur/budget-board
 
-APP="Budget Board"
+APP="Budget-Board"
 var_tags="${var_tags:-finance;budget;money}"
 var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-2048}"
