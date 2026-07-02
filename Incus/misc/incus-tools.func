@@ -1,0 +1,374 @@
+#!/usr/bin/env bash
+# Copyright (c) 2021-2026 community-scripts ORG
+# Author: MickLesk
+# License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
+
+# ==============================================================================
+# INCUS-TOOLS.FUNC - COMPATIBILITY LAYER FOR INCUS INSTALL SCRIPTS
+# ==============================================================================
+#
+# Incus-compatible implementations of tools.func functions.
+# All functions maintain the same signature/behavior as the Proxmox originals.
+#
+# Usage in Incus install scripts:
+#   source /dev/stdin <<< "$INCUS_FUNCTIONS"
+#   # All standard functions are now available
+#
+# ==============================================================================
+
+[[ -n "${_INCUS_TOOLS_FUNC_LOADED:-}" ]] && return
+_INCUS_TOOLS_FUNC_LOADED=1
+
+# Ensure incus-core is loaded
+if [[ -z "${_INCUS_CORE_FUNC_LOADED:-}" ]]; then
+  INCUS_COMMUNITY_SCRIPTS_URL="${COMMUNITY_SCRIPTS_URL:-https://raw.githubusercontent.com/community-scripts/ProxmoxVED/main}"
+  source <(curl -fsSL "$INCUS_COMMUNITY_SCRIPTS_URL/Incus/misc/incus-core.func")
+  load_incus_functions
+fi
+
+# ==============================================================================
+# SECTION 1: GITHUB RELEASE MANAGEMENT
+# ==============================================================================
+
+get_latest_github_release() {
+  local repo="$1"
+  curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null |
+    grep -oP '"tag_name":\s*"\K[^"]+' | head -1
+}
+
+check_for_gh_release() {
+  local app="$1" repo="$2" version_file="${HOME}/.${app}"
+  incus_msg_info "Checking for ${app} updates"
+  local current_version="" latest_version
+  [[ -f "$version_file" ]] && current_version=$(cat "$version_file")
+  latest_version=$(get_latest_github_release "$repo")
+  [[ -z "$latest_version" ]] && { incus_msg_warn "Could not determine latest version of ${app}"; return 1; }
+  [[ "$current_version" == "$latest_version" ]] && { incus_msg_ok "${app} is already up-to-date (${current_version})"; return 1; }
+  incus_msg_ok "Update available: ${app} ${current_version:-not installed} -> ${latest_version}"
+  return 0
+}
+
+fetch_and_deploy_gh_release() {
+  local app="$1" repo="$2" mode="${3:-tarball}" version="${4:-latest}" target_dir="${5:-/opt/${app}}" asset_pattern="${6:-}"
+  incus_msg_info "Fetching ${app} release"
+  local release_version
+  [[ "$version" == "latest" ]] && release_version=$(get_latest_github_release "$repo") || release_version="$version"
+  [[ -z "$release_version" ]] && { incus_msg_error "Could not determine release version"; return 1; }
+
+  if [[ "${CLEAN_INSTALL:-0}" == "1" ]] && [[ -d "$target_dir" ]]; then
+    incus_msg_info "Performing clean install"
+    rm -rf "$target_dir"
+    incus_msg_ok "Removed existing installation"
+  fi
+  mkdir -p "$target_dir"
+
+  case "$mode" in
+  tarball)
+    local tarball_url="https://github.com/${repo}/archive/refs/tags/${release_version}.tar.gz"
+    local tarball_path="/tmp/${app}-${release_version}.tar.gz"
+    curl_with_retry "$tarball_url" "$tarball_path"
+    tar -xzf "$tarball_path" -C "$target_dir" --strip-components=1
+    rm -f "$tarball_path"
+    ;;
+  binary)
+    local deb_url
+    deb_url=$(curl -fsSL "https://api.github.com/repos/${repo}/releases/tags/${release_version}" 2>/dev/null |
+      grep -oP '"browser_download_url":\s*"\K[^"]*\.deb' | head -1)
+    [[ -z "$deb_url" ]] && { incus_msg_error "No .deb found"; return 1; }
+    local deb_path="/tmp/${app}-${release_version}.deb"
+    curl_with_retry "$deb_url" "$deb_path"
+    incus_silent dpkg -i "$deb_path"
+    incus_silent apt install -f -y
+    rm -f "$deb_path"
+    ;;
+  prebuild)
+    [[ -z "$asset_pattern" ]] && { incus_msg_error "Asset pattern required"; return 1; }
+    local download_url
+    download_url=$(curl -fsSL "https://api.github.com/repos/${repo}/releases/tags/${release_version}" 2>/dev/null |
+      grep -oP '"browser_download_url":\s*"\K[^"]*' | grep -i "$asset_pattern" | head -1)
+    [[ -z "$download_url" ]] && { incus_msg_error "No matching asset"; return 1; }
+    local archive_path="/tmp/${app}-${release_version}.tar.gz"
+    curl -L -o "$archive_path" "$download_url"
+    case "$download_url" in
+    *.zip) unzip -q -o "$archive_path" -d "$target_dir" ;;
+    *.tar.bz2) tar -xjf "$archive_path" -C "$target_dir" ;;
+    *.tar.gz) tar -xzf "$archive_path" -C "$target_dir" ;;
+    *) tar -xzf "$archive_path" -C "$target_dir" ;;
+    esac
+    rm -f "$archive_path"
+    ;;
+  singlefile)
+    [[ -z "$asset_pattern" ]] && { incus_msg_error "Asset pattern required"; return 1; }
+    local binary_url
+    binary_url=$(curl -fsSL "https://api.github.com/repos/${repo}/releases/tags/${release_version}" 2>/dev/null |
+      grep -oP '"browser_download_url":\s*"\K[^"]*' | grep -i "$asset_pattern" | head -1)
+    [[ -z "$binary_url" ]] && { incus_msg_error "No matching binary"; return 1; }
+    local binary_name
+    binary_name=$(basename "$binary_url" | sed 's/\?.*//')
+    curl -fsSL -o "${target_dir}/${binary_name}" "$binary_url"
+    case "$binary_name" in
+    *.bz2) bunzip2 -f "${target_dir}/${binary_name}" && binary_name="${binary_name%.bz2}" ;;
+    *.gz) gunzip -f "${target_dir}/${binary_name}" && binary_name="${binary_name%.gz}" ;;
+    esac
+    chmod +x "${target_dir}/${binary_name}"
+    ;;
+  *) incus_msg_error "Unknown mode: ${mode}"; return 1 ;;
+  esac
+
+  echo "$release_version" >"${HOME}/.${app}"
+  incus_msg_ok "Deployed ${app} ${release_version}"
+}
+
+create_backup() {
+  local path="$1" backup_path="${path}.bak"
+  [[ -d "$path" ]] && { cp -r "$path" "$backup_path"; incus_msg_ok "Backed up ${path}"; }
+}
+
+restore_backup() {
+  local backup_path="${1}.bak"
+  [[ -d "$backup_path" ]] && { rm -rf "$1"; mv "$backup_path" "$1"; incus_msg_ok "Restored backup"; }
+}
+
+arch_resolve() {
+  local arch; arch="$(dpkg --print-architecture)"
+case "$arch" in amd64) echo "${1:-x86_64}" ;; arm64) echo "${2:-arm64}" ;; *) echo "${1:-x86_64}" ;; esac
+}
+
+# ==============================================================================
+# SECTION 2: RUNTIME/LANGUAGE SETUP
+# ==============================================================================
+
+setup_nodejs() {
+  local version="${NODE_VERSION:-22}"
+  incus_msg_info "Installing Node.js ${version}"
+  curl -fsSL "https://deb.nodesource.com/setup_${version}.x" | bash - &>"$(get_active_incus_logfile)"
+  incus_silent apt install -y nodejs
+  incus_msg_ok "Installed Node.js $(node -v 2>/dev/null || echo unknown)"
+}
+
+setup_go() {
+  local version="${GO_VERSION:-1.22}" arch
+  arch="$(dpkg --print-architecture)"
+  [[ "$arch" == "amd64" ]] && arch="amd64"
+  [[ "$arch" == "arm64" ]] && arch="arm64"
+  incus_msg_info "Installing Go ${version}"
+  curl -fsSL "https://go.dev/dl/go${version}.linux-${arch}.tar.gz" -o /tmp/go.tar.gz
+  rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tar.gz && rm -f /tmp/go.tar.gz
+  grep -q '/usr/local/go/bin' /etc/profile.d/go.sh 2>/dev/null || echo 'export PATH=$PATH:/usr/local/go/bin' >/etc/profile.d/go.sh
+  export PATH="$PATH:/usr/local/go/bin"
+  incus_msg_ok "Installed Go $(go version | awk '{print $3}')"
+}
+
+setup_rust() {
+  incus_msg_info "Installing Rust"
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &>"$(get_active_incus_logfile)"
+  source "$HOME/.cargo/env"
+  [[ -n "${RUST_CRATES:-}" ]] && cargo install ${RUST_CRATES}
+  incus_msg_ok "Installed Rust $(rustc --version 2>/dev/null | awk '{print $2}' || echo unknown)"
+}
+
+setup_ruby() {
+  incus_msg_info "Installing Ruby ${RUBY_VERSION:-3.3}"
+  incus_silent apt install -y ruby ruby-dev build-essential
+  incus_msg_ok "Installed Ruby $(ruby --version | awk '{print $2}')"
+}
+
+setup_java() {
+  local version="${JAVA_VERSION:-21}"
+  incus_msg_info "Installing Java ${version}"
+  incus_silent apt install -y "openjdk-${version}-jdk"
+  incus_msg_ok "Installed Java $(java -version 2>&1 | head -1)"
+}
+
+setup_php() {
+  local version="${PHP_VERSION:-8.3}"
+  incus_msg_info "Installing PHP ${version}"
+  incus_silent apt install -y lsb-release ca-certificates
+  curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /etc/apt/trusted.gpg.d/php.gpg 2>/dev/null
+  echo "deb https://packages.sury.org/php/ $(incus_get_os_info codename) main" >/etc/apt/sources.list.d/php.list
+  incus_silent apt update
+  local packages=("php${version}" "php${version}-cli" "php${version}-common" "php${version}-fpm")
+  if [[ -n "${PHP_MODULES:-}" ]]; then
+    IFS=',' read -ra modules <<<"$PHP_MODULES"
+    for mod in "${modules[@]}"; do packages+=("php${version}-${mod}"); done
+  fi
+  incus_silent apt install -y "${packages[@]}"
+  incus_msg_ok "Installed PHP $(php -v 2>/dev/null | awk '/^PHP/{print $2}' || echo unknown)"
+}
+
+setup_uv() {
+  local python_version="${UV_PYTHON:-3.12}"
+  incus_msg_info "Installing UV (Python ${python_version})"
+  curl -fsSL https://astral.sh/uv/install.sh | bash &>"$(get_active_incus_logfile)"
+  source "$HOME/.local/env" 2>/dev/null || true
+  incus_silent uv python install "$python_version" 2>/dev/null || true
+  incus_msg_ok "Installed UV with Python ${python_version}"
+}
+
+# ==============================================================================
+# SECTION 3: DATABASE SETUP
+# ==============================================================================
+
+setup_postgresql() {
+  local version="${PG_VERSION:-16}"
+  incus_msg_info "Installing PostgreSQL ${version}"
+  curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg 2>/dev/null
+  echo "deb http://apt.postgresql.org/pub/repos/apt $(incus_get_os_info codename)-pgdg main" >/etc/apt/sources.list.d/postgresql.list
+  incus_silent apt update
+  incus_silent apt install -y "postgresql-${version}"
+  incus_msg_ok "Installed PostgreSQL $(psql --version 2>/dev/null | awk '{print $3}' || echo unknown)"
+}
+
+setup_postgresql_db() {
+  local db_name="${PG_DB_NAME:-}" db_user="${PG_DB_USER:-}"
+  [[ -z "$db_name" || -z "$db_user" ]] && { incus_msg_error "PG_DB_NAME and PG_DB_USER required"; return 1; }
+  [[ -z "${PG_DB_PASS:-}" ]] && { PG_DB_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c 16); export PG_DB_PASS; }
+  incus_msg_info "Creating PostgreSQL database: ${db_name}"
+  su - postgres -c "psql -c \"CREATE USER ${db_user} WITH PASSWORD '${PG_DB_PASS}';\"" 2>/dev/null || true
+  su - postgres -c "psql -c \"CREATE DATABASE ${db_name} WITH OWNER ${db_user};\"" 2>/dev/null || true
+  [[ -n "${PG_DB_EXTENSIONS:-}" ]] && IFS=',' read -ra exts <<<"$PG_DB_EXTENSIONS" && for ext in "${exts[@]}"; do
+    su - postgres -c "psql -d ${db_name} -c \"CREATE EXTENSION IF NOT EXISTS ${ext};\"" 2>/dev/null || true
+  done
+  incus_msg_ok "Created PostgreSQL database: ${db_name}"
+}
+
+setup_mariadb_db() {
+  local db_name="${MARIADB_DB_NAME:-}" db_user="${MARIADB_DB_USER:-}"
+  [[ -z "$db_name" || -z "$db_user" ]] && { incus_msg_error "MARIADB_DB_NAME and MARIADB_DB_USER required"; return 1; }
+  [[ -z "${MARIADB_DB_PASS:-}" ]] && { MARIADB_DB_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c 16); export MARIADB_DB_PASS; }
+  incus_msg_info "Creating MariaDB database: ${db_name}"
+  mysql -e "CREATE DATABASE IF NOT EXISTS ${db_name};" 2>/dev/null
+  mysql -e "CREATE USER IF NOT EXISTS '${db_user}'@'localhost' IDENTIFIED BY '${MARIADB_DB_PASS}';" 2>/dev/null
+  mysql -e "GRANT ALL PRIVILEGES ON ${db_name}.* TO '${db_user}'@'localhost';" 2>/dev/null
+  mysql -e "FLUSH PRIVILEGES;" 2>/dev/null
+  incus_msg_ok "Created MariaDB database: ${db_name}"
+}
+
+setup_mongodb() {
+  local version="${MONGO_VERSION:-7.0}"
+  incus_msg_info "Installing MongoDB ${version}"
+  curl -fsSL "https://www.mongodb.org/static/pgp/server-${version}.asc" | gpg --dearmor -o "/etc/apt/trusted.gpg.d/mongodb-server-${version}.gpg" 2>/dev/null
+  echo "deb [signed-by=/etc/apt/trusted.gpg.d/mongodb-server-${version}.gpg] https://repo.mongodb.org/apt/debian $(incus_get_os_info codename)/mongodb-org/${version} main" >"/etc/apt/sources.list.d/mongodb-org-${version}.list"
+  incus_silent apt update && incus_silent apt install -y mongodb-org
+  incus_msg_ok "Installed MongoDB"
+}
+
+setup_mysql() {
+  incus_msg_info "Installing MySQL"
+  incus_silent apt install -y mysql-server
+  incus_msg_ok "Installed MySQL"
+}
+
+setup_clickhouse() {
+  incus_msg_info "Installing ClickHouse"
+  curl -fsSL 'https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key' | gpg --dearmor -o /etc/apt/trusted.gpg.d/clickhouse.gpg 2>/dev/null
+  echo "deb [signed-by=/etc/apt/trusted.gpg.d/clickhouse.gpg] https://packages.clickhouse.com/deb stable main" >/etc/apt/sources.list.d/clickhouse.list
+  incus_silent apt update && incus_silent apt install -y clickhouse-server clickhouse-client
+  incus_msg_ok "Installed ClickHouse"
+}
+
+# ==============================================================================
+# SECTION 4: TOOLS & UTILITIES
+# ==============================================================================
+
+setup_composer() {
+  incus_msg_info "Installing Composer"
+  curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer &>/dev/null
+  incus_msg_ok "Installed Composer"
+}
+
+setup_ffmpeg() { incus_msg_info "Installing FFmpeg"; incus_silent apt install -y ffmpeg; incus_msg_ok "Installed FFmpeg"; }
+setup_imagemagick() { incus_msg_info "Installing ImageMagick"; incus_silent apt install -y imagemagick; incus_msg_ok "Installed ImageMagick"; }
+setup_gs() { incus_msg_info "Installing Ghostscript"; incus_silent apt install -y ghostscript; incus_msg_ok "Installed Ghostscript"; }
+
+setup_adminer() {
+  incus_msg_info "Installing Adminer"
+  mkdir -p /usr/share/adminer
+  curl -fsSL https://github.com/vrana/adminer/releases/latest/download/adminer.php -o /usr/share/adminer/index.php
+  incus_msg_ok "Installed Adminer"
+}
+
+setup_hwaccel() {
+  incus_msg_warn "Hardware acceleration setup is not fully supported in Incus containers"
+}
+
+# ==============================================================================
+# SECTION 5: HELPER UTILITIES
+# ==============================================================================
+
+ensure_dependencies() {
+  local missing=()
+  for dep in "$@"; do
+    command -v "$dep" &>/dev/null || missing+=("$dep")
+  done
+  [[ ${#missing[@]} -gt 0 ]] && { incus_msg_info "Installing: ${missing[*]}"; incus_silent apt install -y "${missing[@]}"; incus_msg_ok "Installed dependencies"; }
+}
+
+install_packages_with_retry() {
+  local packages=("$@") max_retries=3 retry=0
+  while [[ $retry -le $max_retries ]]; do
+    DEBIAN_FRONTEND=noninteractive incus_silent apt install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" "${packages[@]}" 2>/dev/null && return 0
+    retry=$((retry + 1))
+    [[ $retry -le $max_retries ]] && { incus_msg_warn "Retry ${retry}/${max_retries}..."; incus_silent dpkg --configure -a 2>/dev/null || true; incus_silent apt update 2>/dev/null || true; sleep $((retry * 2)); }
+  done
+  incus_msg_error "Failed to install: ${packages[*]}"; return 100
+}
+
+curl_with_retry() {
+  local url="$1" output="${2:--}" retries="${CURL_RETRIES:-3}" timeout="${CURL_TIMEOUT:-60}" attempt=1 backoff=1
+  while [[ $attempt -le $retries ]]; do
+    if [[ "$output" == "-" ]]; then
+      curl -fsSL --connect-timeout 10 --max-time "$timeout" "$url" && return 0
+    else
+      curl -fsSL --connect-timeout 10 --max-time "$timeout" -o "$output" "$url" && return 0
+    fi
+    sleep "$backoff"; backoff=$((backoff * 2)); ((backoff > 30)) && backoff=30; timeout=$((timeout * 2)); ((attempt++))
+  done
+  return 7
+}
+
+# ==============================================================================
+# SECTION 6: COMPATIBILITY STUBS (for standard install script functions)
+# ==============================================================================
+
+incus_motd_ssh() {
+  local ip; ip=$(incus_get_ip)
+  cat <<EOF >/etc/motd
+  🚀 Incus Container: $(hostname)
+  🖥️  OS: $(grep ^PRETTY_NAME /etc/os-release | cut -d= -f2 | tr -d '"')
+  📡 IP Address: ${ip}
+EOF
+}
+
+incus_customize() {
+  cat <<'EOF' >/etc/profile.d/incus-aliases.sh
+alias ll='ls -la'
+alias la='ls -A'
+alias l='ls -CF'
+alias ..='cd ..'
+alias update='apt update && apt upgrade -y'
+alias cleanup='apt autoremove -y && apt autoclean'
+EOF
+  [[ -n "${CT_TIMEZONE:-}" && "$CT_TIMEZONE" != "host" ]] && timedatectl set-timezone "$CT_TIMEZONE" 2>/dev/null || true
+}
+
+incus_cleanup() {
+  incus_silent apt -y autoremove
+  incus_silent apt -y autoclean
+  rm -f /tmp/incus-funcs.sh
+}
+
+# Standard name stubs
+verb_ip6() { true; }
+setting_up_container() { incus_prepare_install_env; }
+network_check() { incus_network_check; }
+update_os() { incus_update_os; }
+motd_ssh() { incus_motd_ssh; }
+customize() { incus_customize; }
+cleanup_lxc() { incus_cleanup; }
+check_container_storage() { incus_check_container_storage "$@"; }
+check_container_resources() { incus_check_container_resources "$@"; }
+header_info() { clear; echo -e "${INCUS_HEADER:-Incus :: ${APP}}"; }
+
+LOCAL_IP=$(incus_get_ip 2>/dev/null || echo "unknown")
+: "${STD:=silent}"
