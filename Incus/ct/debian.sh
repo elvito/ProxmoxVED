@@ -4,20 +4,17 @@ source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxV
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: MickLesk (CanbiZ)
 # License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
-# Source:
 
 APP="Debian"
-var_tags="${var_tags:-}"
+var_tags="${var_tags:-os;debian}"
 var_cpu="${var_cpu:-4}"
 var_ram="${var_ram:-8192}"
 var_disk="${var_disk:-20}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
-var_gpu="${var_gpu:-yes}"
 
 header_info "$APP"
 incus_variables
-incus_color
 incus_catch_errors
 
 function update_script() {
@@ -28,10 +25,10 @@ function update_script() {
     msg_error "No ${APP} Installation Found!"
     exit
   fi
-  msg_info "Updating Debian LXC"
+  msg_info "Updating Debian Container"
   $STD apt update
   $STD apt upgrade -y
-  msg_ok "Updated Debian LXC"
+  msg_ok "Updated Debian Container"
   cleanup_lxc
   exit
 }

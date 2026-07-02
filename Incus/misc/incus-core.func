@@ -234,21 +234,8 @@ incus_check() {
   fi
 }
 
-# ------------------------------------------------------------------------------
-# incus_arch_check()
-#
-# - Validates system architecture is amd64/x86_64
-# - Exits with error for unsupported architectures
-# ------------------------------------------------------------------------------
-incus_arch_check() {
-  local arch
-  arch="$(dpkg --print-architecture)"
-  if [[ "$arch" != "amd64" && "$arch" != "arm64" ]]; then
-    incus_msg_error "This script requires amd64 or arm64 (detected: $arch)."
-    sleep 2
-    exit 106
-  fi
-}
+# Incus handles cross-architecture natively (e.g. x86 host running ARM containers).
+# No arch_check needed - removed from Incus scripts.
 
 # ==============================================================================
 # SECTION 3: EXECUTION HELPERS

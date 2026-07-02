@@ -7,7 +7,7 @@ source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxV
 # Source: https://ubuntu.com/
 
 APP="Ubuntu"
-var_tags="${var_tags:-os}"
+var_tags="${var_tags:-os;ubuntu}"
 var_cpu="${var_cpu:-1}"
 var_ram="${var_ram:-512}"
 var_disk="${var_disk:-2}"
@@ -16,7 +16,6 @@ var_version="${var_version:-24.04}"
 
 header_info "$APP"
 incus_variables
-incus_color
 incus_catch_errors
 
 function update_script() {
@@ -27,11 +26,10 @@ function update_script() {
     msg_error "No ${APP} Installation Found!"
     exit
   fi
-
-  msg_info "Updating Ubuntu LXC"
+  msg_info "Updating Ubuntu Container"
   $STD apt update
   $STD apt upgrade -y
-  msg_ok "Updated Ubuntu LXC"
+  msg_ok "Updated Ubuntu Container"
   exit
 }
 

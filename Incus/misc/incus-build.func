@@ -239,7 +239,6 @@ incus_start() {
   incus_shell_check
   incus_root_check
   incus_check
-  incus_arch_check
   clear
 }
 

@@ -13,10 +13,9 @@ var_disk="${var_disk:-4}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
 
-load_incus_functions
+header_info "$APP"
 incus_variables
 incus_catch_errors
-incus_color
 
 function update_script() {
   header_info
