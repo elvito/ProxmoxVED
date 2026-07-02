@@ -159,10 +159,10 @@ chmod +x /etc/profile.d/incus-motd.sh" >>"$INCUS_BUILD_LOG" 2>&1
 }
 
 incus_build_functions_content() {
-  INCUS_FUNCTIONS=""
-  INCUS_FUNCTIONS=$(curl -fsSL "${INCUS_COMMUNITY_SCRIPTS_URL}/Incus/misc/incus-tools.func" 2>/dev/null || true)
-  [[ -z "$INCUS_FUNCTIONS" ]] && { msg_error "Could not fetch incus-tools.func"; exit 1; }
-  export INCUS_FUNCTIONS
+  FUNCTIONS_FILE_PATH=""
+  FUNCTIONS_FILE_PATH=$(curl -fsSL "${INCUS_COMMUNITY_SCRIPTS_URL}/Incus/misc/incus-tools.func" 2>/dev/null || true)
+  [[ -z "$FUNCTIONS_FILE_PATH" ]] && { msg_error "Could not fetch incus-tools.func"; exit 1; }
+  export FUNCTIONS_FILE_PATH
 }
 
 incus_run_install_script() {
@@ -171,13 +171,13 @@ incus_run_install_script() {
   incus_build_functions_content
   msg_info "Pushing functions to container"
   incus exec "${CT_NAME}" -- bash -c "cat > /tmp/incus-functions <<'INNEREOF'
-${INCUS_FUNCTIONS}
+${FUNCTIONS_FILE_PATH}
 INNEREOF
-export INCUS_FUNCTIONS=\$(cat /tmp/incus-functions)" >>"$INCUS_BUILD_LOG" 2>&1 || { msg_error "Failed to push functions"; exit 1; }
+export FUNCTIONS_FILE_PATH=\$(cat /tmp/incus-functions)" >>"$INCUS_BUILD_LOG" 2>&1 || { msg_error "Failed to push functions"; exit 1; }
   msg_ok "Functions pushed"
   msg_info "Starting application installation"
   incus exec "${CT_NAME}" -- bash -c "
-    export INCUS_FUNCTIONS=\$(cat /tmp/incus-functions)
+    export FUNCTIONS_FILE_PATH=\$(cat /tmp/incus-functions)
     export VERBOSE='${VERBOSE}'
     export STD='silent'
     export APP='${APP}'
@@ -283,4 +283,48 @@ incus_update_os() {
   incus_silent apt update
   incus_silent apt upgrade -y
   msg_ok "OS updated"
+}
+
+# ==============================================================================
+# SECTION 8: BARE FUNCTION ALIASES (for CT script compatibility)
+# ==============================================================================
+#
+# These aliases allow CT scripts to use the same function names as Proxmox
+# scripts (start, build_container, description, variables) without
+# modification. color, catch_errors, header_info are already provided by
+# incus_install_compat_aliases in incus-core.func / incus-tools.func.
+# ==============================================================================
+
+# start() - Handles both host (create) and container (update) contexts
+start() {
+  if command -v incus &>/dev/null && [[ -z "${_INCUS_INSIDE_CONTAINER:-}" ]]; then
+    # Running on Incus host - proceed to build_container
+    return 0
+  else
+    # Running inside container - update mode
+    VERBOSE=${var_verbose:-"no"}
+    if [[ "${VERBOSE}" == "yes" ]]; then
+      STD=""
+    else
+      STD="silent"
+    fi
+    ensure_profile_loaded
+    update_script
+    cleanup_lxc
+  fi
+}
+
+# build_container() - Creates Incus container and runs install script
+build_container() {
+  incus_build_container
+}
+
+# description() - Shows completion summary
+description() {
+  incus_description
+}
+
+# variables() - Initializes variables (alias for incus_variables)
+variables() {
+  incus_variables
 }
