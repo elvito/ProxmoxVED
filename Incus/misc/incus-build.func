@@ -146,15 +146,19 @@ incus_inject_ssh_keys() {
 
 incus_setup_motd() {
   msg_info "Setting up MOTD"
-  incus exec "${CT_NAME}" -- bash -c "cat > /etc/profile.d/incus-motd.sh <<'EOF'
+  local motd_file
+  motd_file=$(mktemp)
+  cat >"$motd_file" <<MOTDEOF
 #!/bin/bash
 echo ''
 echo '  🚀 Incus Container: ${CT_NAME}'
-echo '  🖥️  OS: \$(grep ^PRETTY_NAME /etc/os-release | cut -d= -f2 | tr -d '\"' )'
-echo '  📡 IP: \$(hostname -I | awk '{print \$1}' )'
+echo "  🖥️  OS: \$(grep ^PRETTY_NAME /etc/os-release | cut -d= -f2 | tr -d '"')"
+echo "  📡 IP: \$(hostname -I | awk '{print \$1}')"
 echo ''
-EOF
-chmod +x /etc/profile.d/incus-motd.sh" >>"$INCUS_BUILD_LOG" 2>&1
+MOTDEOF
+  incus file push "$motd_file" "${CT_NAME}/etc/profile.d/incus-motd.sh" >>"$INCUS_BUILD_LOG" 2>&1
+  incus exec "${CT_NAME}" -- chmod +x /etc/profile.d/incus-motd.sh >>"$INCUS_BUILD_LOG" 2>&1
+  rm -f "$motd_file"
   msg_ok "MOTD configured"
 }
 
