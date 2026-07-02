@@ -381,37 +381,61 @@ EOF
 }
 
 # ------------------------------------------------------------------------------
+# incus_build_functions_content()
+#
+# - Constructs INCUS_FUNCTIONS variable containing incus-tools.func content
+# - incus-tools.func loads incus-core.func internally
+# - Equivalent to Proxmox's FUNCTIONS_FILE_PATH mechanism
+# - Called before container creation to prepare the functions blob
+# ------------------------------------------------------------------------------
+incus_build_functions_content() {
+  INCUS_FUNCTIONS=""
+  local tools_url="${INCUS_COMMUNITY_SCRIPTS_URL}/Incus/misc/incus-tools.func"
+  INCUS_FUNCTIONS=$(curl -fsSL "$tools_url" 2>/dev/null || true)
+  if [[ -z "$INCUS_FUNCTIONS" ]]; then
+    incus_msg_error "Could not fetch incus-tools.func from ${tools_url}"
+    exit 1
+  fi
+  export INCUS_FUNCTIONS
+}
+
+# ------------------------------------------------------------------------------
 # incus_run_install_script()
 #
-# - Pushes and executes the application install script inside the container
-# - This is the Incus equivalent of the Proxmox post-create install step
+# - Pushes INCUS_FUNCTIONS into the container
+# - Executes the application install script inside the container
+# - Install script sources INCUS_FUNCTIONS via /dev/stdin (same as Proxmox)
 # ------------------------------------------------------------------------------
 incus_run_install_script() {
   incus_msg_info "Preparing installation script"
   incus_log_section "Application Installation: ${APP}"
 
-  # Create a combined functions file for the container
-  local funcs_content
-  funcs_content=$(cat "$INCUS_COMMUNITY_SCRIPTS_URL/Incus/misc/incus-core.func" 2>/dev/null || true)
+  # Build the combined functions content (same as Proxmox's FUNCTIONS_FILE_PATH)
+  incus_build_functions_content
 
-  # Push core functions to container
-  incus exec "${CT_NAME}" -- bash -c "cat > /tmp/incus-funcs.sh <<'INNEREOF'
-${funcs_content}
-INNEREOF" >>"$INCUS_BUILD_LOG" 2>&1 || true
+  # Set INCUS_FUNCTIONS inside the container via environment
+  incus_msg_info "Pushing functions to container"
+  incus exec "${CT_NAME}" -- bash -c "
+    cat > /tmp/incus-functions <<'INNEREOF'
+${INCUS_FUNCTIONS}
+INNEREOF
+    # Also export for /dev/stdin sourcing
+    export INCUS_FUNCTIONS=\$(cat /tmp/incus-functions)
+  " >>"$INCUS_BUILD_LOG" 2>&1 || {
+    incus_msg_error "Failed to push functions to container"
+    exit 1
+  }
+  incus_msg_ok "Functions pushed to container"
 
-  # Source functions and run install script inside container
+  # Run the install script inside the container
   incus_msg_info "Starting application installation inside container"
   incus exec "${CT_NAME}" -- bash -c "
-    source /tmp/incus-funcs.sh
-    load_incus_functions
-    incus_install_compat_aliases
-    incus_catch_errors
+    export INCUS_FUNCTIONS=\$(cat /tmp/incus-functions)
     export VERBOSE='${VERBOSE}'
     export STD='silent'
     export APP='${APP}'
     export NSAPP='${NSAPP}'
-    
-    # Run the install script from GitHub
+    export INCUS_HEADER='Incus :: ${APP}'
     bash <(curl -fsSL '${INCUS_COMMUNITY_SCRIPTS_URL}/Incus/install/${var_install}.sh')
   " 2>&1 | tee -a "$INCUS_BUILD_LOG" || {
     incus_msg_error "Installation failed inside container"
