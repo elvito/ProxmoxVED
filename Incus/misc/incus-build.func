@@ -6,48 +6,32 @@
 # ==============================================================================
 # INCUS-BUILD.FUNC - INCUS CONTAINER BUILD & CONFIGURATION
 # ==============================================================================
-#
-# This file provides the main build functions for creating and configuring
-# Incus containers. It handles:
-#
-#   - Variable initialization and defaults
-#   - Container creation and resource allocation
-#   - Storage pool selection and management
-#   - Network configuration (bridged, macvlan, etc.)
-#   - Image/template management (incus image servers)
-#   - User interaction menus and prompts
-#   - SSH key injection and MOTD customization
-#
-# Key differences from Proxmox LXC (build.func):
-#   - Uses incus CLI instead of pct/pvesm/pveam
-#   - Container names instead of numeric CTIDs
-#   - incus profiles for configuration instead of .conf files
-#   - incus image servers instead of pveam templates
-#   - incus networks instead of vmbr bridges
-#   - No unprivileged/privileged concept (Incus handles differently)
-#
-# Usage:
-#   - Sourced automatically by Incus CT creation scripts
-#   - Requires incus-core.func to be loaded first
-#
+# Loads incus-core.func AND incus-tools.func so ALL functions
+# (msg_info, msg_ok, header_info, setup_*, etc.) work on the HOST too.
 # ==============================================================================
 
 [[ -n "${_INCUS_BUILD_FUNC_LOADED:-}" ]] && return
 _INCUS_BUILD_FUNC_LOADED=1
 
+INCUS_COMMUNITY_SCRIPTS_URL="${COMMUNITY_SCRIPTS_URL:-https://raw.githubusercontent.com/community-scripts/ProxmoxVED/main}"
+
+# --- LOAD incus-core.func (incus_* prefixed functions) ---
+if [[ -z "${_INCUS_CORE_FUNC_LOADED:-}" ]]; then
+  source <(curl -fsSL "$INCUS_COMMUNITY_SCRIPTS_URL/Incus/misc/incus-core.func")
+  load_incus_functions
+  incus_catch_errors
+fi
+
+# --- LOAD incus-tools.func (bare function stubs: msg_info, header_info, etc.) ---
+if [[ -z "${_INCUS_TOOLS_FUNC_LOADED:-}" ]]; then
+  source <(curl -fsSL "$INCUS_COMMUNITY_SCRIPTS_URL/Incus/misc/incus-tools.func")
+  incus_install_compat_aliases
+fi
+
 # ==============================================================================
-# SECTION 1: INITIALIZATION & CORE VARIABLES
+# SECTION 1: INITIALIZATION
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# incus_variables()
-#
-# - Initializes core variables for Incus container creation
-# - Normalizes application name (NSAPP = lowercase, no spaces)
-# - Builds installer filename (var_install)
-# - Generates unique session ID for tracking and logging
-# - Captures app-declared resource defaults (CPU, RAM, Disk)
-# ------------------------------------------------------------------------------
 incus_variables() {
   NSAPP=$(echo "${APP,,}" | tr -d ' ')
   var_install="${NSAPP}-install"
@@ -56,101 +40,39 @@ incus_variables() {
   DIAGNOSTICS="yes"
   METHOD="default"
   RANDOM_UUID="$(cat /proc/sys/kernel/random/uuid)"
-
   SESSION_ID="${RANDOM_UUID:0:8}"
   INCUS_BUILD_LOG="/tmp/incus-create-${SESSION_ID}.log"
   INCUS_INSTALL_LOG="/tmp/incus-install-${SESSION_ID}.log"
   _INCUS_HOST_LOGFILE="$INCUS_BUILD_LOG"
-
-  # Capture app-declared defaults (for precedence logic)
-  if [[ -n "${var_cpu:-}" && "${var_cpu}" =~ ^[0-9]+$ ]]; then
-    export APP_DEFAULT_CPU="${var_cpu}"
-  fi
-  if [[ -n "${var_ram:-}" && "${var_ram}" =~ ^[0-9]+$ ]]; then
-    export APP_DEFAULT_RAM="${var_ram}"
-  fi
-  if [[ -n "${var_disk:-}" && "${var_disk}" =~ ^[0-9]+$ ]]; then
-    export APP_DEFAULT_DISK="${var_disk}"
-  fi
+  if [[ -n "${var_cpu:-}" && "${var_cpu}" =~ ^[0-9]+$ ]]; then export APP_DEFAULT_CPU="${var_cpu}"; fi
+  if [[ -n "${var_ram:-}" && "${var_ram}" =~ ^[0-9]+$ ]]; then export APP_DEFAULT_RAM="${var_ram}"; fi
+  if [[ -n "${var_disk:-}" && "${var_disk}" =~ ^[0-9]+$ ]]; then export APP_DEFAULT_DISK="${var_disk}"; fi
 }
 
-# Configurable base URL for development
-INCUS_COMMUNITY_SCRIPTS_URL="${COMMUNITY_SCRIPTS_URL:-https://raw.githubusercontent.com/community-scripts/ProxmoxVED/main}"
-
-# Source Incus core functions if not already loaded
-if [[ -z "${_INCUS_CORE_FUNC_LOADED:-}" ]]; then
-  source <(curl -fsSL "$INCUS_COMMUNITY_SCRIPTS_URL/Incus/misc/incus-core.func")
-  load_incus_functions
-  incus_catch_errors
-fi
-
 # ==============================================================================
-# SECTION 2: PRE-FLIGHT CHECKS
+# SECTION 2: PRE-FLIGHT
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# incus_run_preflight()
-#
-# - Runs comprehensive system checks before container creation
-# - Checks: Incus daemon, storage pools, networks, disk space, images
-# ------------------------------------------------------------------------------
 incus_run_preflight() {
   echo -e "${INFO}${BOLD}${DGN} Running Incus pre-flight checks...${CL}"
   echo ""
-
-  # Check Incus availability
-  if ! command -v incus &>/dev/null; then
-    incus_msg_error "Incus is not installed. Install: https://linuxcontainers.org/incus/docs/main/installing/"
-    exit 1
-  fi
-
-  # Check Incus daemon
-  if ! incus info &>/dev/null; then
-    incus_msg_error "Incus daemon not accessible. Run: systemctl start incus"
-    exit 1
-  fi
-
-  incus_msg_ok "Incus daemon running"
-
-  # Check storage pools
-  local pool_count
-  pool_count=$(incus storage list -f csv 2>/dev/null | wc -l)
-  if [[ "$pool_count" -eq 0 ]]; then
-    incus_msg_error "No Incus storage pools found. Create: incus storage create default dir"
-    exit 1
-  fi
-  incus_msg_ok "Storage pools available (${pool_count})"
-
-  # Check networks
-  local net_count
-  net_count=$(incus network list -f csv 2>/dev/null | grep -cv '^lo$')
+  command -v incus &>/dev/null || { msg_error "Incus not installed"; exit 1; }
+  incus info &>/dev/null || { msg_error "Incus daemon not accessible"; exit 1; }
+  msg_ok "Incus daemon running"
+  local pool_count; pool_count=$(incus storage list -f csv 2>/dev/null | wc -l)
+  [[ "$pool_count" -eq 0 ]] && { msg_error "No Incus storage pools found"; exit 1; }
+  msg_ok "Storage pools available (${pool_count})"
+  local net_count; net_count=$(incus network list -f csv 2>/dev/null | grep -cv '^lo$')
   if [[ "$net_count" -eq 0 ]]; then
-    incus_msg_warn "No Incus networks found. Creating default bridged network..."
-    incus network create incusbr0 2>/dev/null || {
-      incus_msg_error "Failed to create default network incusbr0"
-      exit 1
-    }
-    incus_msg_ok "Created default network incusbr0"
+    msg_warn "No networks found, creating incusbr0..."
+    incus network create incusbr0 2>/dev/null || { msg_error "Failed to create incusbr0"; exit 1; }
+    msg_ok "Created incusbr0"
   else
-    incus_msg_ok "Networks available (${net_count})"
+    msg_ok "Networks available (${net_count})"
   fi
-
-  # Check disk space on default pool
-  local default_pool
-  default_pool=$(incus storage list -f csv 2>/dev/null | head -1 | cut -d, -f1)
-  if [[ -n "$default_pool" ]]; then
-    incus_msg_ok "Default storage pool: ${default_pool}"
-  fi
-
-  # Check DNS resolution
-  if getent hosts images.linuxcontainers.org &>/dev/null; then
-    incus_msg_ok "DNS resolution working"
-  else
-    incus_msg_warn "DNS resolution issue - image downloads may fail"
-  fi
-
+  getent hosts images.linuxcontainers.org &>/dev/null && msg_ok "DNS OK" || msg_warn "DNS issue"
   echo ""
-  incus_msg_ok "All Incus pre-flight checks passed"
+  msg_ok "All pre-flight checks passed"
   sleep 2
 }
 
@@ -158,216 +80,73 @@ incus_run_preflight() {
 # SECTION 3: CONTAINER CREATION
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# incus_base_settings()
-#
-# - Defines all base/default variables for Incus container creation
-# - Reads from environment variables (var_*)
-# - Provides fallback defaults for OS type/version
-# - App-specific values take precedence when they are HIGHER
-# ------------------------------------------------------------------------------
 incus_base_settings() {
-  # Resource allocation: App defaults take precedence if HIGHER
-  local final_disk="${var_disk:-4}"
-  local final_cpu="${var_cpu:-1}"
-  local final_ram="${var_ram:-1024}"
-
-  if [[ -n "${APP_DEFAULT_DISK:-}" && "${APP_DEFAULT_DISK}" =~ ^[0-9]+$ ]]; then
-    if [[ "${APP_DEFAULT_DISK}" -gt "${final_disk}" ]]; then
-      final_disk="${APP_DEFAULT_DISK}"
-    fi
-  fi
-
-  if [[ -n "${APP_DEFAULT_CPU:-}" && "${APP_DEFAULT_CPU}" =~ ^[0-9]+$ ]]; then
-    if [[ "${APP_DEFAULT_CPU}" -gt "${final_cpu}" ]]; then
-      final_cpu="${APP_DEFAULT_CPU}"
-    fi
-  fi
-
-  if [[ -n "${APP_DEFAULT_RAM:-}" && "${APP_DEFAULT_RAM}" =~ ^[0-9]+$ ]]; then
-    if [[ "${APP_DEFAULT_RAM}" -gt "${final_ram}" ]]; then
-      final_ram="${APP_DEFAULT_RAM}"
-    fi
-  fi
-
-  DISK_SIZE="${final_disk}"
-  CORE_COUNT="${final_cpu}"
-  RAM_SIZE="${final_ram}"
+  local final_disk="${var_disk:-4}" final_cpu="${var_cpu:-1}" final_ram="${var_ram:-1024}"
+  [[ -n "${APP_DEFAULT_DISK:-}" && "${APP_DEFAULT_DISK}" -gt "$final_disk" ]] && final_disk="${APP_DEFAULT_DISK}"
+  [[ -n "${APP_DEFAULT_CPU:-}" && "${APP_DEFAULT_CPU}" -gt "$final_cpu" ]] && final_cpu="${APP_DEFAULT_CPU}"
+  [[ -n "${APP_DEFAULT_RAM:-}" && "${APP_DEFAULT_RAM}" -gt "$final_ram" ]] && final_ram="${APP_DEFAULT_RAM}"
+  DISK_SIZE="${final_disk}"; CORE_COUNT="${final_cpu}"; RAM_SIZE="${final_ram}"
   VERBOSE=${var_verbose:-"no"}
-
-  # Container name (use NSAPP or configured name)
   local requested_name="${var_hostname:-$NSAPP}"
   requested_name=$(echo "${requested_name,,}" | tr -d ' ' | tr '_' '-')
   CT_NAME=$(incus_get_next_name "$requested_name")
-
-  # Network settings
-  BRG=${var_brg:-"incusbr0"}
-  NET=${var_net:-"dhcp"}
-  GATE=${var_gateway:-""}
-  MAC=${var_mac:-""}
-  VLAN=${var_vlan:-""}
-  MTU=${var_mtu:-""}
-
-  # SSH settings
-  SSH=${var_ssh:-"no"}
-  SSH_AUTHORIZED_KEY=${var_ssh_authorized_key:-""}
-
-  # Features
-  ENABLE_NESTING=${var_nesting:-"1"}
-  ENABLE_FUSE=${var_fuse:-"no"}
-  ENABLE_TUN=${var_tun:-"no"}
-  ENABLE_GPU=${var_gpu:-"no"}
-
-  # OS settings
-  IMAGE_OS="${var_os:-debian}"
-  IMAGE_VERSION="${var_version:-13}"
-
-  # Tags
+  BRG=${var_brg:-"incusbr0"}; NET=${var_net:-"dhcp"}; GATE=${var_gateway:-""}; MAC=${var_mac:-""}
+  SSH=${var_ssh:-"no"}; SSH_AUTHORIZED_KEY=${var_ssh_authorized_key:-""}
+  ENABLE_NESTING=${var_nesting:-"1"}; ENABLE_FUSE=${var_fuse:-"no"}; ENABLE_TUN=${var_tun:-"no"}; ENABLE_GPU=${var_gpu:-"no"}
+  IMAGE_OS="${var_os:-debian}"; IMAGE_VERSION="${var_version:-13}"
   TAGS="${var_tags:-}"
-
-  # Storage pool
   STORAGE_POOL="${var_storage:-}"
-  if [[ -z "$STORAGE_POOL" ]]; then
-    STORAGE_POOL=$(incus storage list -f csv 2>/dev/null | head -1 | cut -d, -f1)
-  fi
+  [[ -z "$STORAGE_POOL" ]] && STORAGE_POOL=$(incus storage list -f csv 2>/dev/null | head -1 | cut -d, -f1)
 }
 
-# ------------------------------------------------------------------------------
-# incus_echo_config()
-#
-# - Displays the current container configuration summary
-# ------------------------------------------------------------------------------
 incus_echo_config() {
   echo -e "${BL}╔══════════════════════════════════════════════════════════════╗${CL}"
   echo -e "${BL}║${CL}  ${BOLD}Incus Container Configuration${CL}"
   echo -e "${BL}╠══════════════════════════════════════════════════════════════╣${CL}"
-  echo -e "${BL}║${CL}  ${CONTAINERID}Container Name: ${GN}${CT_NAME}${CL}"
+  echo -e "${BL}║${CL}  ${CONTAINERID}Name: ${GN}${CT_NAME}${CL}"
   echo -e "${BL}║${CL}  ${CONTAINERTYPE}Image: ${GN}${IMAGE_OS}-${IMAGE_VERSION}${CL}"
-  echo -e "${BL}║${CL}  ${CPUCORE}CPU Cores: ${GN}${CORE_COUNT}${CL}"
-  echo -e "${BL}║${CL}  ${RAMSIZE}RAM: ${GN}${RAM_SIZE} MiB${CL}"
-  echo -e "${BL}║${CL}  ${DISKSIZE}Disk: ${GN}${DISK_SIZE} GB${CL}"
-  echo -e "${BL}║${CL}  ${BRIDGE}Network: ${GN}${BRG}${CL}"
-  echo -e "${BL}║${CL}  ${NETWORK}IP: ${GN}${NET}${CL}"
-  echo -e "${BL}║${CL}  💾 Storage Pool: ${GN}${STORAGE_POOL}${CL}"
-  if [[ -n "$TAGS" ]]; then
-    echo -e "${BL}║${CL}  🏷️  Tags: ${GN}${TAGS}${CL}"
-  fi
+  echo -e "${BL}║${CL}  ${CPUCORE}CPU: ${GN}${CORE_COUNT}${CL}   ${RAMSIZE}RAM: ${GN}${RAM_SIZE} MiB${CL}   ${DISKSIZE}Disk: ${GN}${DISK_SIZE} GB${CL}"
+  echo -e "${BL}║${CL}  ${BRIDGE}Network: ${GN}${BRG}${CL}   ${NETWORK}IP: ${GN}${NET}${CL}"
   echo -e "${BL}╚══════════════════════════════════════════════════════════════╝${CL}"
 }
 
-# ------------------------------------------------------------------------------
-# incus_create_container()
-#
-# - Creates the Incus container with all configured settings
-# - Launches from the appropriate image
-# - Configures resources, network, and features
-# - Waits for container to be ready
-# ------------------------------------------------------------------------------
 incus_create_container() {
   local image_name="images:${IMAGE_OS}/${IMAGE_VERSION}"
-  local image_alias
-  image_alias=$(incus_get_image_alias "$IMAGE_OS" "$IMAGE_VERSION")
-
-  incus_msg_info "Creating Incus container: ${CT_NAME}"
+  msg_info "Creating Incus container: ${CT_NAME}"
   incus_log_section "Container Creation: ${CT_NAME}"
-
-  # Build incus launch command
   local launch_args=()
-
-  # Basic configuration via --config
   launch_args+=("--config" "limits.cpu=${CORE_COUNT}")
   launch_args+=("--config" "limits.memory=${RAM_SIZE}MiB")
-
-  # Network configuration
-  if [[ "$NET" == "dhcp" ]]; then
-    launch_args+=("--network" "${BRG}")
-  else
-    # Static IP
-    local ip_addr="${NET%%/*}"
-    launch_args+=("--network" "${BRG}")
-    launch_args+=("--config" "volatile.eth0.hwaddr=${MAC:-auto}")
-  fi
-
-  # Nesting (required for Docker in CT)
-  if [[ "$ENABLE_NESTING" == "1" ]]; then
-    launch_args+=("--config" "security.nesting=true")
-  fi
-
-  # FUSE
-  if [[ "$ENABLE_FUSE" == "yes" ]]; then
-    launch_args+=("--config" "security.privileged=true")
-  fi
-
-  # TUN/TAP
-  if [[ "$ENABLE_TUN" == "yes" ]]; then
-    launch_args+=("--config" "security.privileged=true")
-  fi
-
-  # Storage
+  launch_args+=("--network" "${BRG}")
+  [[ "$ENABLE_NESTING" == "1" ]] && launch_args+=("--config" "security.nesting=true")
+  [[ "$ENABLE_FUSE" == "yes" || "$ENABLE_TUN" == "yes" ]] && launch_args+=("--config" "security.privileged=true")
   launch_args+=("--storage" "${STORAGE_POOL}")
   launch_args+=("--device" "root,size=${DISK_SIZE}GiB")
-
-  # Create and start the container
   incus launch "${image_name}" "${CT_NAME}" "${launch_args[@]}" >>"$INCUS_BUILD_LOG" 2>&1 || {
-    incus_msg_error "Failed to create container ${CT_NAME}"
-    incus_msg_custom "→" "${YWB}" "Check log: ${INCUS_BUILD_LOG}"
-    exit 1
+    msg_error "Failed to create container ${CT_NAME}"; exit 1;
   }
-
-  incus_msg_ok "Created container ${CT_NAME}"
-
-  # Wait for container to be fully ready
-  incus_msg_info "Waiting for container to initialize"
+  msg_ok "Created container ${CT_NAME}"
+  msg_info "Waiting for container to initialize"
   sleep 3
-  local max_wait=60
   local waited=0
-  while ! incus exec "${CT_NAME}" -- true &>/dev/null; do
-    sleep 2
-    waited=$((waited + 2))
-    if [[ "$waited" -ge "$max_wait" ]]; then
-      incus_msg_error "Container ${CT_NAME} did not become ready within ${max_wait}s"
-      exit 1
-    fi
-  done
-  incus_msg_ok "Container ${CT_NAME} is ready"
-
-  # Get container IP
-  local container_ip
-  container_ip=$(incus exec "${CT_NAME}" -- incus_get_ip 2>/dev/null || incus exec "${CT_NAME}" -- hostname -I 2>/dev/null | awk '{print $1}')
-  if [[ -n "$container_ip" ]]; then
-    incus_msg_ok "Container IP: ${container_ip}"
-    export IP="$container_ip"
-  else
-    incus_msg_warn "Could not determine container IP. DHCP may be in progress."
-    export IP="unknown"
-  fi
+  while ! incus exec "${CT_NAME}" -- true &>/dev/null; do sleep 2; waited=$((waited + 2)); [[ "$waited" -ge 60 ]] && { msg_error "Container not ready"; exit 1; }; done
+  msg_ok "Container ${CT_NAME} is ready"
+  local container_ip; container_ip=$(incus exec "${CT_NAME}" -- hostname -I 2>/dev/null | awk '{print $1}')
+  [[ -n "$container_ip" ]] && { msg_ok "Container IP: ${container_ip}"; export IP="$container_ip"; } || { msg_warn "IP unknown, DHCP may be in progress"; export IP="unknown"; }
 }
 
-# ------------------------------------------------------------------------------
-# incus_inject_ssh_keys()
-#
-# - Installs SSH keys into the container if SSH is enabled
-# ------------------------------------------------------------------------------
 incus_inject_ssh_keys() {
   [[ "${SSH:-no}" != "yes" ]] && return 0
-
-  if [[ -n "${SSH_AUTHORIZED_KEY:-}" ]]; then
-    incus_msg_info "Installing SSH key into container ${CT_NAME}"
-    incus exec "${CT_NAME}" -- bash -c "mkdir -p /root/.ssh && chmod 700 /root/.ssh" &>/dev/null
-    incus exec "${CT_NAME}" -- bash -c "echo '${SSH_AUTHORIZED_KEY}' > /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys" &>/dev/null
-    incus_msg_ok "SSH key installed"
-  fi
+  [[ -n "${SSH_AUTHORIZED_KEY:-}" ]] && {
+    msg_info "Installing SSH key"
+    incus exec "${CT_NAME}" -- bash -c "mkdir -p /root/.ssh && chmod 700 /root/.ssh && echo '${SSH_AUTHORIZED_KEY}' > /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys" &>/dev/null
+    msg_ok "SSH key installed"
+  }
 }
 
-# ------------------------------------------------------------------------------
-# incus_setup_motd()
-#
-# - Configures MOTD (Message of the Day) inside the container
-# ------------------------------------------------------------------------------
 incus_setup_motd() {
-  incus_msg_info "Setting up MOTD"
-  incus exec "${CT_NAME}" -- bash -c "
-    cat <<'EOF' > /etc/profile.d/incus-motd.sh
+  msg_info "Setting up MOTD"
+  incus exec "${CT_NAME}" -- bash -c "cat > /etc/profile.d/incus-motd.sh <<'EOF'
 #!/bin/bash
 echo ''
 echo '  🚀 Incus Container: ${CT_NAME}'
@@ -375,60 +154,28 @@ echo '  🖥️  OS: \$(grep ^PRETTY_NAME /etc/os-release | cut -d= -f2 | tr -d 
 echo '  📡 IP: \$(hostname -I | awk '{print \$1}' )'
 echo ''
 EOF
-    chmod +x /etc/profile.d/incus-motd.sh
-  " >>"$INCUS_BUILD_LOG" 2>&1
-  incus_msg_ok "MOTD configured"
+chmod +x /etc/profile.d/incus-motd.sh" >>"$INCUS_BUILD_LOG" 2>&1
+  msg_ok "MOTD configured"
 }
 
-# ------------------------------------------------------------------------------
-# incus_build_functions_content()
-#
-# - Constructs INCUS_FUNCTIONS variable containing incus-tools.func content
-# - incus-tools.func loads incus-core.func internally
-# - Equivalent to Proxmox's FUNCTIONS_FILE_PATH mechanism
-# - Called before container creation to prepare the functions blob
-# ------------------------------------------------------------------------------
 incus_build_functions_content() {
   INCUS_FUNCTIONS=""
-  local tools_url="${INCUS_COMMUNITY_SCRIPTS_URL}/Incus/misc/incus-tools.func"
-  INCUS_FUNCTIONS=$(curl -fsSL "$tools_url" 2>/dev/null || true)
-  if [[ -z "$INCUS_FUNCTIONS" ]]; then
-    incus_msg_error "Could not fetch incus-tools.func from ${tools_url}"
-    exit 1
-  fi
+  INCUS_FUNCTIONS=$(curl -fsSL "${INCUS_COMMUNITY_SCRIPTS_URL}/Incus/misc/incus-tools.func" 2>/dev/null || true)
+  [[ -z "$INCUS_FUNCTIONS" ]] && { msg_error "Could not fetch incus-tools.func"; exit 1; }
   export INCUS_FUNCTIONS
 }
 
-# ------------------------------------------------------------------------------
-# incus_run_install_script()
-#
-# - Pushes INCUS_FUNCTIONS into the container
-# - Executes the application install script inside the container
-# - Install script sources INCUS_FUNCTIONS via /dev/stdin (same as Proxmox)
-# ------------------------------------------------------------------------------
 incus_run_install_script() {
-  incus_msg_info "Preparing installation script"
+  msg_info "Preparing installation"
   incus_log_section "Application Installation: ${APP}"
-
-  # Build the combined functions content (same as Proxmox's FUNCTIONS_FILE_PATH)
   incus_build_functions_content
-
-  # Set INCUS_FUNCTIONS inside the container via environment
-  incus_msg_info "Pushing functions to container"
-  incus exec "${CT_NAME}" -- bash -c "
-    cat > /tmp/incus-functions <<'INNEREOF'
+  msg_info "Pushing functions to container"
+  incus exec "${CT_NAME}" -- bash -c "cat > /tmp/incus-functions <<'INNEREOF'
 ${INCUS_FUNCTIONS}
 INNEREOF
-    # Also export for /dev/stdin sourcing
-    export INCUS_FUNCTIONS=\$(cat /tmp/incus-functions)
-  " >>"$INCUS_BUILD_LOG" 2>&1 || {
-    incus_msg_error "Failed to push functions to container"
-    exit 1
-  }
-  incus_msg_ok "Functions pushed to container"
-
-  # Run the install script inside the container
-  incus_msg_info "Starting application installation inside container"
+export INCUS_FUNCTIONS=\$(cat /tmp/incus-functions)" >>"$INCUS_BUILD_LOG" 2>&1 || { msg_error "Failed to push functions"; exit 1; }
+  msg_ok "Functions pushed"
+  msg_info "Starting application installation"
   incus exec "${CT_NAME}" -- bash -c "
     export INCUS_FUNCTIONS=\$(cat /tmp/incus-functions)
     export VERBOSE='${VERBOSE}'
@@ -437,139 +184,57 @@ INNEREOF
     export NSAPP='${NSAPP}'
     export INCUS_HEADER='Incus :: ${APP}'
     bash <(curl -fsSL '${INCUS_COMMUNITY_SCRIPTS_URL}/Incus/install/${var_install}.sh')
-  " 2>&1 | tee -a "$INCUS_BUILD_LOG" || {
-    incus_msg_error "Installation failed inside container"
-    incus_msg_custom "→" "${YWB}" "Check log: ${INCUS_BUILD_LOG}"
-    exit 1
-  }
-
-  incus_msg_ok "Application installation completed"
+  " 2>&1 | tee -a "$INCUS_BUILD_LOG" || { msg_error "Installation failed inside container"; exit 1; }
+  msg_ok "Installation completed"
 }
 
-# ------------------------------------------------------------------------------
-# incus_build_container()
-#
-# - Main orchestration function: creates container + installs app
-# - Called by CT scripts after start/incus_variables
-# ------------------------------------------------------------------------------
 incus_build_container() {
   incus_run_preflight
   incus_base_settings
   incus_echo_config
-
-  # Confirm or auto-proceed
-  if [[ "${MODE:-default}" != "advanced" ]]; then
-    echo -e "\n${INFO}${YW}Press Enter to create the container or Ctrl+C to abort...${CL}"
-    read -r
-  fi
-
+  [[ "${MODE:-default}" != "advanced" ]] && { echo -e "\n${INFO}${YW}Press Enter to create the container or Ctrl+C to abort...${CL}"; read -r; }
   incus_create_container
   incus_inject_ssh_keys
   incus_setup_motd
   incus_run_install_script
-
-  incus_msg_ok "Container ${CT_NAME} successfully created with ${APP}!"
+  msg_ok "Container ${CT_NAME} successfully created with ${APP}!"
 }
 
 # ==============================================================================
-# SECTION 4: UPDATE SCRIPT SUPPORT
+# SECTION 4: UPDATE SUPPORT
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# incus_check_container_storage()
-#
-# - Checks if container has enough free space for updates
-# - Exits with error if insufficient space
-# ------------------------------------------------------------------------------
 incus_check_container_storage() {
-  local required_mb="${1:-500}"
-  local available_mb
+  local required_mb="${1:-500}" available_mb
   available_mb=$(df -m / | awk 'NR==2 {print $4}')
-
-  if [[ "$available_mb" -lt "$required_mb" ]]; then
-    incus_msg_error "Insufficient storage space. Available: ${available_mb}MB, Required: ${required_mb}MB"
-    exit 1
-  fi
+  [[ "$available_mb" -lt "$required_mb" ]] && { msg_error "Insufficient storage: ${available_mb}MB < ${required_mb}MB"; exit 1; }
 }
 
-# ------------------------------------------------------------------------------
-# incus_check_container_resources()
-#
-# - Checks if container has minimum resources for updates
-# ------------------------------------------------------------------------------
 incus_check_container_resources() {
-  local available_ram
-  available_ram=$(free -m | awk 'NR==2 {print $7}')
-  if [[ "$available_ram" -lt 256 ]]; then
-    incus_msg_warn "Low memory available: ${available_ram}MB. Update may fail."
-  fi
+  local available_ram; available_ram=$(free -m | awk 'NR==2 {print $7}')
+  [[ "$available_ram" -lt 256 ]] && msg_warn "Low memory: ${available_ram}MB"
 }
 
 # ==============================================================================
-# SECTION 5: INCUS-SPECIFIC MAINTENANCE
+# SECTION 5: MAINTENANCE
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# incus_container_shell()
-#
-# - Opens a shell inside the container (useful for debugging)
-# ------------------------------------------------------------------------------
-incus_container_shell() {
-  local name="${1:-$CT_NAME}"
-  incus_msg_info "Opening shell in container: ${name}"
-  incus exec "$name" -- bash
-}
+incus_container_shell() { incus exec "${1:-$CT_NAME}" -- bash; }
+incus_container_logs() { incus info --show-log "${1:-$CT_NAME}" 2>/dev/null | tail -50; }
 
-# ------------------------------------------------------------------------------
-# incus_container_logs()
-#
-# - Shows recent logs from the container
-# ------------------------------------------------------------------------------
-incus_container_logs() {
-  local name="${1:-$CT_NAME}"
-  incus info --show-log "$name" 2>/dev/null | tail -50
-}
-
-# ------------------------------------------------------------------------------
-# incus_delete_container()
-#
-# - Stops and deletes a container (with confirmation)
-# ------------------------------------------------------------------------------
 incus_delete_container() {
   local name="$1"
-  if ! incus_container_exists "$name"; then
-    incus_msg_error "Container ${name} does not exist"
-    return 1
-  fi
-
-  incus_msg_warn "About to delete container: ${name}"
-  echo -ne "${INFO}${YW}Type 'yes' to confirm: ${CL}"
-  read -r confirm
-  if [[ "$confirm" != "yes" ]]; then
-    incus_msg_ok "Deletion cancelled"
-    return 0
-  fi
-
-  incus_msg_info "Stopping container ${name}"
-  incus stop "$name" --force &>/dev/null || true
-  incus_msg_ok "Stopped container ${name}"
-
-  incus_msg_info "Deleting container ${name}"
-  incus delete "$name" &>/dev/null
-  incus_msg_ok "Deleted container ${name}"
+  incus_container_exists "$name" || { msg_error "Container ${name} does not exist"; return 1; }
+  msg_warn "About to delete: ${name}"; echo -ne "${INFO}${YW}Type 'yes' to confirm: ${CL}"; read -r confirm
+  [[ "$confirm" != "yes" ]] && { msg_ok "Cancelled"; return 0; }
+  msg_info "Stopping ${name}"; incus stop "$name" --force &>/dev/null || true; msg_ok "Stopped"
+  msg_info "Deleting ${name}"; incus delete "$name" &>/dev/null; msg_ok "Deleted"
 }
 
 # ==============================================================================
-# SECTION 6: DEFAULT START FUNCTION
+# SECTION 6: START FUNCTIONS
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# incus_start()
-#
-# - Entry point for CT scripts
-# - Called after script variables are defined
-# - Runs shell_check, root_check, incus_check, and variables init
-# ------------------------------------------------------------------------------
 incus_start() {
   incus_shell_check
   incus_root_check
@@ -578,12 +243,6 @@ incus_start() {
   clear
 }
 
-# ------------------------------------------------------------------------------
-# incus_description()
-#
-# - Displays post-installation summary with access info
-# - Called after build_container completes
-# ------------------------------------------------------------------------------
 incus_description() {
   echo ""
   echo -e "${BL}╔══════════════════════════════════════════════════════════════╗${CL}"
@@ -591,6 +250,7 @@ incus_description() {
   echo -e "${BL}╠══════════════════════════════════════════════════════════════╣${CL}"
   echo -e "${BL}║${CL}  Container: ${GN}${CT_NAME}${CL}"
   echo -e "${BL}║${CL}  Access: ${GN}incus exec ${CT_NAME} -- bash${CL}"
+  echo -e "${BL}║${CL}  Shell: ${GN}incus shell ${CT_NAME}${CL}"
   echo -e "${BL}║${CL}  Logs: ${GN}incus info --show-log ${CT_NAME}${CL}"
   echo -e "${BL}║${CL}  Stop: ${GN}incus stop ${CT_NAME}${CL}"
   echo -e "${BL}║${CL}  Delete: ${GN}incus delete ${CT_NAME}${CL}"
@@ -599,55 +259,29 @@ incus_description() {
 }
 
 # ==============================================================================
-# SECTION 7: INSTALL FUNCTION EXPORT (for install scripts)
+# SECTION 7: INSTALL HELPERS (run inside container)
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# incus_prepare_install_env()
-#
-# - Prepares the environment for install scripts running inside the container
-# - Sets up /opt directory, logging, and basic OS updates
-# - Called at the beginning of each install script
-# ------------------------------------------------------------------------------
 incus_prepare_install_env() {
-  incus_msg_info "Preparing Incus container environment"
-  incus_log_section "Environment Setup"
-
-  # Basic OS update
+  msg_info "Preparing environment"
   incus_silent apt update
   incus_silent apt install -y curl wget gnupg ca-certificates
-  incus_msg_ok "Environment prepared"
+  msg_ok "Environment prepared"
 }
 
-# ------------------------------------------------------------------------------
-# incus_network_check()
-#
-# - Verifies network connectivity inside the container
-# ------------------------------------------------------------------------------
 incus_network_check() {
-  incus_msg_info "Checking network connectivity"
-  local retries=10
+  msg_info "Checking network"
   local i=0
-  while [[ $i -lt $retries ]]; do
-    if ping -c 1 -W 2 8.8.8.8 &>/dev/null; then
-      incus_msg_ok "Network is available"
-      return 0
-    fi
-    sleep 2
-    ((i++))
+  while [[ $i -lt 10 ]]; do
+    ping -c 1 -W 2 8.8.8.8 &>/dev/null && { msg_ok "Network available"; return 0; }
+    sleep 2; ((i++))
   done
-  incus_msg_error "No network connectivity after ${retries} attempts"
-  exit 1
+  msg_error "No network connectivity"; exit 1
 }
 
-# ------------------------------------------------------------------------------
-# incus_update_os()
-#
-# - Updates the OS packages inside the container
-# ------------------------------------------------------------------------------
 incus_update_os() {
-  incus_msg_info "Updating OS packages"
+  msg_info "Updating OS"
   incus_silent apt update
   incus_silent apt upgrade -y
-  incus_msg_ok "OS updated"
+  msg_ok "OS updated"
 }
