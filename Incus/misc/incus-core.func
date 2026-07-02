@@ -27,6 +27,14 @@
 [[ -n "${_INCUS_CORE_FUNC_LOADED:-}" ]] && return
 _INCUS_CORE_FUNC_LOADED=1
 
+INCUS_COMMUNITY_SCRIPTS_URL="${COMMUNITY_SCRIPTS_URL:-https://raw.githubusercontent.com/community-scripts/ProxmoxVED/main}"
+
+# Load upstream misc/core.func for full helper parity (prompt_*, dev-mode, etc.).
+# Incus-specific behavior is provided through incus_* functions and aliases below.
+if [[ -z "${_CORE_FUNC_LOADED:-}" ]]; then
+  source <(curl -fsSL "$INCUS_COMMUNITY_SCRIPTS_URL/misc/core.func")
+fi
+
 # ==============================================================================
 # SECTION 1: INITIALIZATION & SETUP
 # ==============================================================================
@@ -226,7 +234,7 @@ incus_check() {
 
   # Check if we have any storage pools
   local pool_count
-  pool_count=$(incus storage list -f csv 2>/dev/null | wc -l)
+  pool_count=$(incus storage list -f csv,noheader 2>/dev/null | wc -l)
   if [[ "$pool_count" -eq 0 ]]; then
     incus_msg_error "No Incus storage pools found."
     incus_msg_error "Create one with: incus storage create default dir"
@@ -492,6 +500,25 @@ incus_msg_custom() {
 }
 
 # ------------------------------------------------------------------------------
+# incus_msg_debug()
+# ------------------------------------------------------------------------------
+incus_msg_debug() {
+  if [[ "${var_full_verbose:-0}" == "1" ]]; then
+    [[ "${var_verbose:-0}" != "1" ]] && var_verbose=1
+    echo -e "${YWB}[$(date '+%F %T')] [DEBUG]${CL} $*"
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# incus_msg_dev()
+# ------------------------------------------------------------------------------
+incus_msg_dev() {
+  if [[ -n "${dev_mode:-}" ]]; then
+    echo -e "${SEARCH}${BOLD}${DGN}🔧 [DEV]${CL} $*"
+  fi
+}
+
+# ------------------------------------------------------------------------------
 # incus_is_verbose_mode()
 # ------------------------------------------------------------------------------
 incus_is_verbose_mode() {
@@ -517,7 +544,7 @@ incus_fatal() {
 # - Returns list of available Incus storage pools
 # ------------------------------------------------------------------------------
 incus_get_storage_pools() {
-  incus storage list -f csv 2>/dev/null | cut -d, -f1
+  incus storage list -f csv,noheader 2>/dev/null | cut -d, -f1
 }
 
 # ------------------------------------------------------------------------------
@@ -526,7 +553,7 @@ incus_get_storage_pools() {
 # - Returns list of available Incus networks
 # ------------------------------------------------------------------------------
 incus_get_networks() {
-  incus network list -f csv 2>/dev/null | grep -v '^lo$' | cut -d, -f1
+  incus network list -f csv,noheader 2>/dev/null | grep -v '^lo$' | cut -d, -f1
 }
 
 # ------------------------------------------------------------------------------
@@ -535,7 +562,7 @@ incus_get_networks() {
 # - Returns list of available Incus profiles
 # ------------------------------------------------------------------------------
 incus_get_profiles() {
-  incus profile list -f csv 2>/dev/null | cut -d, -f1
+  incus profile list -f csv,noheader 2>/dev/null | cut -d, -f1
 }
 
 # ------------------------------------------------------------------------------
@@ -544,7 +571,7 @@ incus_get_profiles() {
 # - Returns list of locally cached Incus images
 # ------------------------------------------------------------------------------
 incus_get_images() {
-  incus image list -f csv 2>/dev/null | cut -d, -f1,2
+  incus image list -f csv,noheader 2>/dev/null | cut -d, -f1,2
 }
 
 # ------------------------------------------------------------------------------
@@ -659,6 +686,8 @@ incus_install_compat_aliases() {
   eval 'msg_error() { incus_msg_error "$@"; }'
   eval 'msg_warn() { incus_msg_warn "$@"; }'
   eval 'msg_custom() { incus_msg_custom "$@"; }'
+  eval 'msg_debug() { incus_msg_debug "$@"; }'
+  eval 'msg_dev() { incus_msg_dev "$@"; }'
   eval 'silent() { incus_silent "$@"; }'
   eval 'log_msg() { incus_log_msg "$@"; }'
   eval 'get_active_logfile() { get_active_incus_logfile; }'
@@ -680,6 +709,16 @@ incus_install_compat_aliases() {
   eval 'stop_spinner() { incus_stop_spinner; }'
   eval 'shell_check() { incus_shell_check; }'
   eval 'root_check() { incus_root_check; }'
+  eval 'check() { incus_check; }'
+  eval 'pve_check() { incus_check; }'
+  eval 'load_functions() { load_incus_functions; }'
+  eval 'get_storage_pools() { incus_get_storage_pools; }'
+  eval 'get_networks() { incus_get_networks; }'
+  eval 'get_profiles() { incus_get_profiles; }'
+  eval 'get_images() { incus_get_images; }'
+  eval 'get_os_info() { incus_get_os_info "$@"; }'
+  eval 'get_ip() { incus_get_ip; }'
+  eval 'on_hup_keepalive() { :; }'
 }
 
 # ==============================================================================

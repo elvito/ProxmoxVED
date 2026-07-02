@@ -59,10 +59,10 @@ incus_run_preflight() {
   command -v incus &>/dev/null || { msg_error "Incus not installed"; exit 1; }
   incus info &>/dev/null || { msg_error "Incus daemon not accessible"; exit 1; }
   msg_ok "Incus daemon running"
-  local pool_count; pool_count=$(incus storage list -f csv 2>/dev/null | wc -l)
+  local pool_count; pool_count=$(incus storage list -f csv,noheader 2>/dev/null | wc -l)
   [[ "$pool_count" -eq 0 ]] && { msg_error "No Incus storage pools found"; exit 1; }
   msg_ok "Storage pools available (${pool_count})"
-  local net_count; net_count=$(incus network list -f csv 2>/dev/null | grep -cv '^lo$')
+  local net_count; net_count=$(incus network list -f csv,noheader 2>/dev/null | grep -cv '^lo$')
   if [[ "$net_count" -eq 0 ]]; then
     msg_warn "No networks found, creating incusbr0..."
     incus network create incusbr0 2>/dev/null || { msg_error "Failed to create incusbr0"; exit 1; }
@@ -96,7 +96,7 @@ incus_base_settings() {
   IMAGE_OS="${var_os:-debian}"; IMAGE_VERSION="${var_version:-13}"
   TAGS="${var_tags:-}"
   STORAGE_POOL="${var_storage:-}"
-  [[ -z "$STORAGE_POOL" ]] && STORAGE_POOL=$(incus storage list -f csv 2>/dev/null | head -1 | cut -d, -f1)
+  [[ -z "$STORAGE_POOL" ]] && STORAGE_POOL=$(incus storage list -f csv,noheader 2>/dev/null | head -1 | cut -d, -f1)
 }
 
 incus_echo_config() {
@@ -177,11 +177,13 @@ incus_run_install_script() {
   incus exec "${CT_NAME}" -- bash -c "cat > /tmp/incus-functions <<'INNEREOF'
 ${FUNCTIONS_FILE_PATH}
 INNEREOF
-export FUNCTIONS_FILE_PATH=\$(cat /tmp/incus-functions)" >>"$INCUS_BUILD_LOG" 2>&1 || { msg_error "Failed to push functions"; exit 1; }
+export FUNCTIONS_FILE_PATH=\$(cat /tmp/incus-functions)
+export INCUS_FUNCTIONS=\$FUNCTIONS_FILE_PATH" >>"$INCUS_BUILD_LOG" 2>&1 || { msg_error "Failed to push functions"; exit 1; }
   msg_ok "Functions pushed"
   msg_info "Starting application installation"
   incus exec "${CT_NAME}" -- bash -c "
     export FUNCTIONS_FILE_PATH=\$(cat /tmp/incus-functions)
+    export INCUS_FUNCTIONS=\"\${FUNCTIONS_FILE_PATH}\"
     export VERBOSE='${VERBOSE}'
     export STD='silent'
     export APP='${APP}'

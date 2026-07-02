@@ -5,7 +5,7 @@
 # License: MIT
 # https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
 
-source /dev/stdin <<<"$INCUS_FUNCTIONS"
+source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
 verb_ip6
 catch_errors
