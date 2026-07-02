@@ -5,7 +5,7 @@
 # License: MIT | https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
 # Source: https://github.com/go-shiori/shiori
 
-source /dev/stdin <<< "$INCUS_FUNCTIONS"
+source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
 verb_ip6
 catch_errors
@@ -31,6 +31,7 @@ cat <<EOF >/etc/systemd/system/shiori.service
 [Unit]
 Description=Shiori Bookmark Manager
 After=network.target
+
 [Service]
 Type=simple
 User=root
@@ -39,6 +40,7 @@ EnvironmentFile=/opt/shiori/.env
 ExecStart=/opt/shiori/shiori server
 Restart=on-failure
 RestartSec=5
+
 [Install]
 WantedBy=multi-user.target
 EOF

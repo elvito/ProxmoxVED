@@ -668,6 +668,18 @@ incus_install_compat_aliases() {
   eval 'fatal() { incus_fatal "$@"; }'
   eval 'color() { incus_color; }'
   eval 'is_verbose_mode() { incus_is_verbose_mode; }'
+  eval 'set_std_mode() { incus_set_std_mode; }'
+  eval 'formatting() { incus_formatting; }'
+  eval 'icons() { incus_icons; }'
+  eval 'default_vars() { incus_default_vars; }'
+  eval 'color_spinner() { incus_color_spinner; }'
+  eval 'strip_ansi() { incus_strip_ansi "$@"; }'
+  eval 'log_section() { incus_log_section "$@"; }'
+  eval 'spinner() { incus_spinner; }'
+  eval 'clear_line() { incus_clear_line; }'
+  eval 'stop_spinner() { incus_stop_spinner; }'
+  eval 'shell_check() { incus_shell_check; }'
+  eval 'root_check() { incus_root_check; }'
 }
 
 # ==============================================================================
