@@ -184,13 +184,23 @@ incus_shell_check() {
 # - Verifies script is running with root privileges
 # ------------------------------------------------------------------------------
 incus_root_check() {
-  if [[ "$(id -u)" -ne 0 || $(ps -o comm= -p $PPID) == "sudo" ]]; then
-    clear
-    incus_msg_error "Please run this script as root."
-    echo -e "\nExiting..."
-    sleep 2
-    exit
+  # Incus can be used by non-root users in the 'incus-admin' group
+  if incus info &>/dev/null; then
+    return 0
   fi
+
+  # Fallback: root always works
+  if [[ "$(id -u)" -eq 0 ]]; then
+    return 0
+  fi
+
+  clear
+  incus_msg_error "Cannot access Incus. Either:"
+  incus_msg_error "  - Run as root (sudo), or"
+  incus_msg_error "  - Add your user to the incus-admin group: sudo usermod -aG incus-admin \$USER"
+  echo -e "\nExiting..."
+  sleep 2
+  exit
 }
 
 # ------------------------------------------------------------------------------
