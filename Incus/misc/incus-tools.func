@@ -419,6 +419,27 @@ setup_hwaccel() {
 # SECTION 6: HELPER UTILITIES
 # ==============================================================================
 
+# setup_deb822_repo - Creates a deb822-format repository file
+# Usage: setup_deb822_repo "name" "gpg_key_url" "repo_url" "suite" "component"
+setup_deb822_repo() {
+  local name="$1" gpg_key_url="$2" repo_url="$3" suite="$4" component="${5:-main}"
+  incus_msg_info "Setting up ${name} repository"
+  local keyring_path="/etc/apt/keyrings/${name}.gpg"
+  mkdir -p /etc/apt/keyrings
+  curl -fsSL "$gpg_key_url" | gpg --dearmor -o "$keyring_path" 2>/dev/null
+  chmod 644 "$keyring_path"
+  cat <<EOF >/etc/apt/sources.list.d/${name}.sources
+Types: deb
+URIs: ${repo_url}
+Suites: ${suite}
+Components: ${component}
+Architectures: $(dpkg --print-architecture)
+Signed-By: ${keyring_path}
+EOF
+  incus_silent apt update
+  incus_msg_ok "Set up ${name} repository"
+}
+
 ensure_dependencies() {
   local missing=()
   for dep in "$@"; do
