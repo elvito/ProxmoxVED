@@ -14,8 +14,9 @@ var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
 
 header_info "$APP"
-incus_variables
-incus_catch_errors
+variables
+color
+catch_errors
 
 function update_script() {
   header_info
@@ -33,9 +34,9 @@ function update_script() {
   exit
 }
 
-incus_start
-incus_build_container
-incus_description
+start
+build_container
+description
 
 msg_ok "Completed successfully!"
 msg_custom "🚀" "${GN}" "${APP} setup has been successfully initialized!"

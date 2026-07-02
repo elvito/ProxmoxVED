@@ -10,16 +10,15 @@
 # Incus-compatible implementations of tools.func functions.
 # All functions maintain the same signature/behavior as the Proxmox originals.
 #
-# Usage in Incus install scripts:
-#   source /dev/stdin <<< "$INCUS_FUNCTIONS"
-#   # All standard functions are now available
+# This file is sourced inside the container via:
+#   source /dev/stdin <<< "$FUNCTIONS_FILE_PATH"
 #
 # ==============================================================================
 
 [[ -n "${_INCUS_TOOLS_FUNC_LOADED:-}" ]] && return
 _INCUS_TOOLS_FUNC_LOADED=1
 
-# Ensure incus-core is loaded
+# Ensure incus-core is loaded (works both on host and inside container)
 if [[ -z "${_INCUS_CORE_FUNC_LOADED:-}" ]]; then
   INCUS_COMMUNITY_SCRIPTS_URL="${COMMUNITY_SCRIPTS_URL:-https://raw.githubusercontent.com/community-scripts/ProxmoxVED/main}"
   source <(curl -fsSL "$INCUS_COMMUNITY_SCRIPTS_URL/Incus/misc/incus-core.func")
@@ -28,7 +27,131 @@ if [[ -z "${_INCUS_CORE_FUNC_LOADED:-}" ]]; then
 fi
 
 # ==============================================================================
-# SECTION 1: GITHUB RELEASE MANAGEMENT
+# ==============================================================================
+
+# OS detection globals (matching install.func)
+OS_TYPE=""
+OS_FAMILY=""
+OS_VERSION=""
+PKG_MANAGER=""
+INIT_SYSTEM=""
+
+detect_os() {
+  if [[ -f /etc/os-release ]]; then
+    . /etc/os-release 2>/dev/null
+    OS_TYPE="${ID:-unknown}"
+    OS_TYPE="${OS_TYPE,,}"
+    OS_VERSION="${VERSION_ID:-unknown}"
+  elif [[ -f /etc/alpine-release ]]; then
+    OS_TYPE="alpine"
+    OS_VERSION=$(cat /etc/alpine-release)
+  elif [[ -f /etc/debian_version ]]; then
+    OS_TYPE="debian"
+    OS_VERSION=$(cat /etc/debian_version)
+  else
+    OS_TYPE="unknown"
+    OS_VERSION="unknown"
+  fi
+
+  case "$OS_TYPE" in
+  debian | ubuntu | devuan)
+    OS_FAMILY="debian"
+    PKG_MANAGER="apt"
+    ;;
+  alpine)
+    OS_FAMILY="alpine"
+    PKG_MANAGER="apk"
+    ;;
+  fedora | rocky | rockylinux | alma | almalinux | centos | rhel | openeuler)
+    OS_FAMILY="rhel"
+    PKG_MANAGER="dnf"
+    ;;
+  opensuse* | sles)
+    OS_TYPE="opensuse"
+    OS_FAMILY="suse"
+    PKG_MANAGER="zypper"
+    ;;
+  arch | archlinux)
+    OS_TYPE="arch"
+    OS_FAMILY="arch"
+    PKG_MANAGER="pacman"
+    ;;
+  gentoo)
+    OS_FAMILY="gentoo"
+    PKG_MANAGER="emerge"
+    ;;
+  *)
+    OS_FAMILY="unknown"
+    PKG_MANAGER="apt"
+    ;;
+  esac
+
+  if command -v systemctl &>/dev/null && [[ -d /run/systemd/system ]]; then
+    INIT_SYSTEM="systemd"
+  elif command -v rc-service &>/dev/null || [[ -d /etc/init.d && -f /sbin/openrc ]]; then
+    INIT_SYSTEM="openrc"
+  else
+    INIT_SYSTEM="systemd"
+  fi
+}
+
+is_alpine() {
+  local os_id="${var_os:-${OS_TYPE:-}}"
+  if [[ -z "$os_id" && -f /etc/os-release ]]; then
+    os_id="$(. /etc/os-release 2>/dev/null && echo "${ID:-}")"
+  fi
+  [[ "$os_id" == "alpine" ]]
+}
+
+get_os_info() {
+  local field="$1"
+  case "$field" in
+  id)
+    . /etc/os-release 2>/dev/null && echo "${ID:-debian}"
+    ;;
+  codename)
+    . /etc/os-release 2>/dev/null && echo "${VERSION_CODENAME:-bookworm}"
+    ;;
+  version)
+    . /etc/os-release 2>/dev/null && echo "${VERSION_ID:-12}"
+    ;;
+  *)
+    echo ""
+    ;;
+  esac
+}
+
+get_lxc_ip() {
+  local ip=""
+  if command -v hostname &>/dev/null; then
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
+  fi
+  if [[ -z "$ip" ]] && command -v ip &>/dev/null; then
+    ip=$(ip -4 addr show scope global 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1 | head -1)
+  fi
+  echo "$ip"
+}
+
+get_ip() {
+  get_lxc_ip
+}
+
+get_current_ip() {
+  get_lxc_ip
+}
+
+update_motd_ip() {
+  local motd_file="/etc/motd"
+  if [[ -f "$motd_file" ]]; then
+    sed -i '/IP Address:/d' "$motd_file" 2>/dev/null || true
+    local ip
+    ip=$(get_lxc_ip)
+    echo -e "${TAB}${NETWORK}${YW} IP Address: ${GN}${ip}${CL}" >>"$motd_file"
+  fi
+}
+
+# ==============================================================================
+# SECTION 2: GITHUB RELEASE MANAGEMENT
 # ==============================================================================
 
 get_latest_github_release() {
@@ -132,11 +255,11 @@ restore_backup() {
 
 arch_resolve() {
   local arch; arch="$(dpkg --print-architecture)"
-case "$arch" in amd64) echo "${1:-x86_64}" ;; arm64) echo "${2:-arm64}" ;; *) echo "${1:-x86_64}" ;; esac
+  case "$arch" in amd64) echo "${1:-x86_64}" ;; arm64) echo "${2:-arm64}" ;; *) echo "${1:-x86_64}" ;; esac
 }
 
 # ==============================================================================
-# SECTION 2: RUNTIME/LANGUAGE SETUP
+# SECTION 3: RUNTIME/LANGUAGE SETUP
 # ==============================================================================
 
 setup_nodejs() {
@@ -150,8 +273,6 @@ setup_nodejs() {
 setup_go() {
   local version="${GO_VERSION:-1.22}" arch
   arch="$(dpkg --print-architecture)"
-  [[ "$arch" == "amd64" ]] && arch="amd64"
-  [[ "$arch" == "arm64" ]] && arch="arm64"
   incus_msg_info "Installing Go ${version}"
   curl -fsSL "https://go.dev/dl/go${version}.linux-${arch}.tar.gz" -o /tmp/go.tar.gz
   rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tar.gz && rm -f /tmp/go.tar.gz
@@ -186,7 +307,7 @@ setup_php() {
   incus_msg_info "Installing PHP ${version}"
   incus_silent apt install -y lsb-release ca-certificates
   curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /etc/apt/trusted.gpg.d/php.gpg 2>/dev/null
-  echo "deb https://packages.sury.org/php/ $(incus_get_os_info codename) main" >/etc/apt/sources.list.d/php.list
+  echo "deb https://packages.sury.org/php/ $(get_os_info codename) main" >/etc/apt/sources.list.d/php.list
   incus_silent apt update
   local packages=("php${version}" "php${version}-cli" "php${version}-common" "php${version}-fpm")
   if [[ -n "${PHP_MODULES:-}" ]]; then
@@ -207,14 +328,14 @@ setup_uv() {
 }
 
 # ==============================================================================
-# SECTION 3: DATABASE SETUP
+# SECTION 4: DATABASE SETUP
 # ==============================================================================
 
 setup_postgresql() {
   local version="${PG_VERSION:-16}"
   incus_msg_info "Installing PostgreSQL ${version}"
   curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg 2>/dev/null
-  echo "deb http://apt.postgresql.org/pub/repos/apt $(incus_get_os_info codename)-pgdg main" >/etc/apt/sources.list.d/postgresql.list
+  echo "deb http://apt.postgresql.org/pub/repos/apt $(get_os_info codename)-pgdg main" >/etc/apt/sources.list.d/postgresql.list
   incus_silent apt update
   incus_silent apt install -y "postgresql-${version}"
   incus_msg_ok "Installed PostgreSQL $(psql --version 2>/dev/null | awk '{print $3}' || echo unknown)"
@@ -249,7 +370,7 @@ setup_mongodb() {
   local version="${MONGO_VERSION:-7.0}"
   incus_msg_info "Installing MongoDB ${version}"
   curl -fsSL "https://www.mongodb.org/static/pgp/server-${version}.asc" | gpg --dearmor -o "/etc/apt/trusted.gpg.d/mongodb-server-${version}.gpg" 2>/dev/null
-  echo "deb [signed-by=/etc/apt/trusted.gpg.d/mongodb-server-${version}.gpg] https://repo.mongodb.org/apt/debian $(incus_get_os_info codename)/mongodb-org/${version} main" >"/etc/apt/sources.list.d/mongodb-org-${version}.list"
+  echo "deb [signed-by=/etc/apt/trusted.gpg.d/mongodb-server-${version}.gpg] https://repo.mongodb.org/apt/debian $(get_os_info codename)/mongodb-org/${version} main" >"/etc/apt/sources.list.d/mongodb-org-${version}.list"
   incus_silent apt update && incus_silent apt install -y mongodb-org
   incus_msg_ok "Installed MongoDB"
 }
@@ -269,7 +390,7 @@ setup_clickhouse() {
 }
 
 # ==============================================================================
-# SECTION 4: TOOLS & UTILITIES
+# SECTION 5: TOOLS & UTILITIES
 # ==============================================================================
 
 setup_composer() {
@@ -294,7 +415,7 @@ setup_hwaccel() {
 }
 
 # ==============================================================================
-# SECTION 5: HELPER UTILITIES
+# SECTION 6: HELPER UTILITIES
 # ==============================================================================
 
 ensure_dependencies() {
@@ -329,19 +450,98 @@ curl_with_retry() {
 }
 
 # ==============================================================================
-# SECTION 6: COMPATIBILITY STUBS (for standard install script functions)
+# SECTION 7: CONTAINER SETUP FUNCTIONS (matching install.func)
 # ==============================================================================
 
-incus_motd_ssh() {
-  local ip; ip=$(incus_get_ip)
-  cat <<EOF >/etc/motd
-  🚀 Incus Container: $(hostname)
-  🖥️  OS: $(grep ^PRETTY_NAME /etc/os-release | cut -d= -f2 | tr -d '"')
-  📡 IP Address: ${ip}
+verb_ip6() {
+  set_std_mode 2>/dev/null || true
+  if [[ "${IPV6_METHOD:-}" == "disable" ]]; then
+    msg_info "Disabling IPv6 (this may affect some services)"
+    mkdir -p /etc/sysctl.d
+    cat >/etc/sysctl.d/99-disable-ipv6.conf <<EOF
+# Disable IPv6 (set by community-scripts)
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
 EOF
+    $STD sysctl -p /etc/sysctl.d/99-disable-ipv6.conf 2>/dev/null || true
+    msg_ok "Disabled IPv6"
+  fi
 }
 
-incus_customize() {
+setting_up_container() {
+  msg_info "Setting up Container OS"
+
+  # Fix Debian 13 template bug where / is owned by nobody
+  if [[ "$(stat -c '%U' / 2>/dev/null)" != "root" ]]; then
+    (chown root:root / 2>/dev/null) || true
+  fi
+
+  # Wait for network
+  local i
+  for ((i = ${RETRY_NUM:-10}; i > 0; i--)); do
+    if [[ -n "$(get_lxc_ip)" ]]; then
+      break
+    fi
+    echo 1>&2 -en "${CROSS}${RD} No Network! "
+    sleep "${RETRY_EVERY:-3}"
+  done
+
+  if [[ -z "$(get_lxc_ip)" ]]; then
+    echo 1>&2 -e "\n${CROSS}${RD} No Network After ${RETRY_NUM:-10} Tries${CL}"
+    echo -e "${NETWORK}Check Network Settings"
+    exit 1
+  fi
+
+  # Remove Python EXTERNALLY-MANAGED restriction (Debian 12+, Ubuntu 23.04+)
+  rm -rf /usr/lib/python3.*/EXTERNALLY-MANAGED 2>/dev/null || true
+
+  # Fix locale warnings
+  if [[ "$PKG_MANAGER" == "apt" || -z "$PKG_MANAGER" ]]; then
+    export DEBIAN_FRONTEND=noninteractive
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    export LANGUAGE=C.UTF-8
+    grep -qxF 'LC_ALL=C.UTF-8' /etc/environment 2>/dev/null || echo -e 'LC_ALL=C.UTF-8\nLANG=C.UTF-8' >>/etc/environment
+  fi
+
+  # Disable network wait services for faster boot
+  systemctl disable -q --now systemd-networkd-wait-online.service 2>/dev/null || true
+
+  msg_ok "Set up Container OS"
+  msg_ok "Network Connected: ${BL}$(get_lxc_ip)"
+}
+
+network_check() {
+  if [[ -z "$(get_lxc_ip)" ]]; then
+    msg_error "No network connectivity"
+    exit 1
+  fi
+}
+
+update_os() {
+  msg_info "Updating Container OS"
+  $STD apt update
+  $STD apt upgrade -y
+  msg_ok "Updated Container OS"
+}
+
+# ==============================================================================
+# SECTION 8: MOTD, CUSTOMIZE, CLEANUP (compatibility stubs)
+# ==============================================================================
+
+motd_ssh() {
+  local ip
+  ip=$(get_lxc_ip)
+  cat <<EOF >/etc/motd
+  🚀 Incus Container: $(hostname)
+  🖥️  OS: $(grep ^PRETTY_NAME /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
+  📡 IP Address: ${ip}
+EOF
+  update_motd_ip 2>/dev/null || true
+}
+
+customize() {
   cat <<'EOF' >/etc/profile.d/incus-aliases.sh
 alias ll='ls -la'
 alias la='ls -A'
@@ -353,23 +553,26 @@ EOF
   [[ -n "${CT_TIMEZONE:-}" && "$CT_TIMEZONE" != "host" ]] && timedatectl set-timezone "$CT_TIMEZONE" 2>/dev/null || true
 }
 
-incus_cleanup() {
-  incus_silent apt -y autoremove
-  incus_silent apt -y autoclean
-  rm -f /tmp/incus-funcs.sh
+cleanup_lxc() {
+  $STD apt -y autoremove 2>/dev/null || true
+  $STD apt -y autoclean 2>/dev/null || true
+  rm -f /tmp/incus-functions 2>/dev/null || true
+  rm -f /tmp/incus-funcs.sh 2>/dev/null || true
 }
 
-# Standard name stubs
-verb_ip6() { true; }
-setting_up_container() { incus_prepare_install_env; }
-network_check() { incus_network_check; }
-update_os() { incus_update_os; }
-motd_ssh() { incus_motd_ssh; }
-customize() { incus_customize; }
-cleanup_lxc() { incus_cleanup; }
+# ==============================================================================
+# SECTION 9: COMPATIBILITY STUBS
+# ==============================================================================
+
 check_container_storage() { incus_check_container_storage "$@"; }
 check_container_resources() { incus_check_container_resources "$@"; }
-header_info() { clear; echo -e "${INCUS_HEADER:-Incus :: ${APP}}"; }
+header_info() {
+  clear
+  echo -e "${INCUS_HEADER:-Incus :: ${APP:-Container}}"
+}
 
-LOCAL_IP=$(incus_get_ip 2>/dev/null || echo "unknown")
+# Run OS detection on load
+detect_os
+
+LOCAL_IP=$(get_lxc_ip 2>/dev/null || echo "unknown")
 : "${STD:=silent}"
