@@ -27,6 +27,7 @@ if [[ -z "${_INCUS_CORE_FUNC_LOADED:-}" ]]; then
 fi
 
 # ==============================================================================
+# SECTION 1: OS DETECTION & UTILITIES
 # ==============================================================================
 
 # OS detection globals (matching install.func)
@@ -564,8 +565,17 @@ cleanup_lxc() {
 # SECTION 9: COMPATIBILITY STUBS
 # ==============================================================================
 
-check_container_storage() { incus_check_container_storage "$@"; }
-check_container_resources() { incus_check_container_resources "$@"; }
+check_container_storage() {
+  local required_mb="${1:-500}" available_mb
+  available_mb=$(df -m / | awk 'NR==2 {print $4}')
+  [[ "$available_mb" -lt "$required_mb" ]] && { msg_error "Insufficient storage: ${available_mb}MB < ${required_mb}MB"; exit 1; }
+}
+
+check_container_resources() {
+  local available_ram; available_ram=$(free -m | awk 'NR==2 {print $7}')
+  [[ "$available_ram" -lt 256 ]] && msg_warn "Low memory: ${available_ram}MB"
+}
+
 header_info() {
   clear
   echo -e "${INCUS_HEADER:-Incus :: ${APP:-Container}}"
