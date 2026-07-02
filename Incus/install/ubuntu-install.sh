@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+# Copyright (c) 2021-2026 tteck
+# Author: tteck (tteckster)
+# License: MIT
+# https://github.com/community-scripts/ProxmoxVED/raw/main/LICENSE
+
+source /dev/stdin <<<"$INCUS_FUNCTIONS"
+color
+verb_ip6
+catch_errors
+setting_up_container
+network_check
+update_os
+
+msg_info "Installing Dependencies"
+$STD apt install -y jq
+msg_ok "Installed Dependencies"
+
+motd_ssh
+customize
+cleanup_lxc
