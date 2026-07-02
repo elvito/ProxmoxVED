@@ -694,7 +694,7 @@ incus_install_compat_aliases() {
 # ------------------------------------------------------------------------------
 incus_container_exists() {
   local name="$1"
-  incus info "$name" &>/dev/null
+  incus info "$name" &>/dev/null && return 0 || return 1
 }
 
 # ------------------------------------------------------------------------------
@@ -706,7 +706,7 @@ incus_container_exists() {
 incus_container_running() {
   local name="$1"
   local status
-  status=$(incus info "$name" 2>/dev/null | awk '/^Status:/ {print $2}')
+  status=$(incus info "$name" 2>/dev/null | awk '/^Status:/ {print $2}') || true
   [[ "$status" == "Running" ]]
 }
 
@@ -722,7 +722,7 @@ incus_get_next_name() {
   local name="${base}"
 
   while incus_container_exists "$name"; do
-    ((counter++))
+    counter=$((counter + 1))
     name="${base}-${counter}"
   done
 
